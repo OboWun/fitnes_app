@@ -1,0 +1,246 @@
+[
+  {
+    "name": "Грыжа межпозвоночного диска",
+    "slug": "herniated_disc"
+  },
+  {
+    "name": "Протрузия диска",
+    "slug": "disc_protrusion"
+  },
+  {
+    "name": "Остеохондроз позвоночника",
+    "slug": "spinal_osteochondrosis"
+  },
+  {
+    "name": "Спондилолистез",
+    "slug": "spondylolisthesis"
+  },
+  {
+    "name": "Стеноз позвоночного канала",
+    "slug": "spinal_stenosis"
+  },
+  {
+    "name": "Компрессионный перелом позвоночника",
+    "slug": "vertebral_compression_fracture"
+  },
+  {
+    "name": "Острая боль в спине",
+    "slug": "acute_back_pain"
+  },
+  {
+    "name": "Хроническая боль в пояснице",
+    "slug": "chronic_lower_back_pain"
+  },
+  {
+    "name": "Повреждение мениска",
+    "slug": "meniscus_injury"
+  },
+  {
+    "name": "Артроз коленного сустава",
+    "slug": "knee_osteoarthritis"
+  },
+  {
+    "name": "Разрыв ПКС",
+    "slug": "acl_tear"
+  },
+  {
+    "name": "Воспаление связок колена",
+    "slug": "knee_ligament_inflammation"
+  },
+  {
+    "name": "Пателлофеморальный болевой синдром",
+    "slug": "patellofemoral_pain_syndrome"
+  },
+  {
+    "name": "Тендинит надколенника",
+    "slug": "patellar_tendinitis"
+  },
+  {
+    "name": "Острая травма колена",
+    "slug": "acute_knee_injury"
+  },
+  {
+    "name": "Хроническая боль в колене",
+    "slug": "chronic_knee_pain"
+  },
+  {
+    "name": "Плечевой импинджмент",
+    "slug": "shoulder_impingement"
+  },
+  {
+    "name": "Разрыв вращательной манжеты",
+    "slug": "rotator_cuff_tear"
+  },
+  {
+    "name": "Нестабильность плечевого сустава",
+    "slug": "shoulder_instability"
+  },
+  {
+    "name": "Замороженное плечо",
+    "slug": "frozen_shoulder"
+  },
+  {
+    "name": "Тендинит бицепса",
+    "slug": "biceps_tendinitis"
+  },
+  {
+    "name": "Артрит плечевого сустава",
+    "slug": "shoulder_arthritis"
+  },
+  {
+    "name": "Острая травма плеча",
+    "slug": "acute_shoulder_injury"
+  },
+  {
+    "name": "Хроническая боль в плече",
+    "slug": "chronic_shoulder_pain"
+  },
+  {
+    "name": "Эпикондилит (локоть теннисиста)",
+    "slug": "epicondylitis"
+  },
+  {
+    "name": "Локтевой туннельный синдром",
+    "slug": "cubital_tunnel_syndrome"
+  },
+  {
+    "name": "Артрит локтевого сустава",
+    "slug": "elbow_arthritis"
+  },
+  {
+    "name": "Острая травма локтя",
+    "slug": "acute_elbow_injury"
+  },
+  {
+    "name": "Синдром запястного канала",
+    "slug": "carpal_tunnel_syndrome"
+  },
+  {
+    "name": "Теносиновит де Кервена",
+    "slug": "de_quervains_tenosynovitis"
+  },
+  {
+    "name": "Артрит запястья",
+    "slug": "wrist_arthritis"
+  },
+  {
+    "name": "Острая травма запястья",
+    "slug": "acute_wrist_injury"
+  },
+  {
+    "name": "Гипертония",
+    "slug": "hypertension"
+  },
+  {
+    "name": "Ишемическая болезнь сердца",
+    "slug": "coronary_artery_disease"
+  },
+  {
+    "name": "Аритмия",
+    "slug": "arrhythmia"
+  },
+  {
+    "name": "Сердечная недостаточность",
+    "slug": "heart_failure"
+  },
+  {
+    "name": "Перенесённый инфаркт",
+    "slug": "post_heart_attack"
+  },
+  {
+    "name": "Астма",
+    "slug": "asthma"
+  },
+  {
+    "name": "ХОБЛ",
+    "slug": "copd"
+  },
+  {
+    "name": "Беременность",
+    "slug": "pregnancy"
+  },
+  {
+    "name": "Диастаз прямых мышц живота",
+    "slug": "diastasis_recti"
+  },
+  {
+    "name": "Паховая грыжа",
+    "slug": "inguinal_hernia"
+  },
+  {
+    "name": "Грыжа пищеводного отверстия диафрагмы",
+    "slug": "hiatal_hernia"
+  },
+  {
+    "name": "Остеопороз",
+    "slug": "osteoporosis"
+  },
+  {
+    "name": "Ревматоидный артрит",
+    "slug": "rheumatoid_arthritis"
+  },
+  {
+    "name": "Фибромиалгия",
+    "slug": "fibromyalgia"
+  },
+  {
+    "name": "Сахарный диабет",
+    "slug": "diabetes"
+  },
+  {
+    "name": "Ожирение",
+    "slug": "obesity"
+  },
+  {
+    "name": "Варикозное расширение вен",
+    "slug": "varicose_veins"
+  },
+  {
+    "name": "Тромбоз глубоких вен",
+    "slug": "deep_vein_thrombosis"
+  },
+  {
+    "name": "Ахиллотендинит",
+    "slug": "achilles_tendinitis"
+  },
+  {
+    "name": "Плантарный фасциит",
+    "slug": "plantar_fasciitis"
+  },
+  {
+    "name": "Шпора пятки",
+    "slug": "heel_spur"
+  },
+  {
+    "name": "Артрит голеностопного сустава",
+    "slug": "ankle_arthritis"
+  },
+  {
+    "name": "Хроническая нестабильность голеностопа",
+    "slug": "chronic_ankle_instability"
+  },
+  {
+    "name": "Острая травма голеностопа",
+    "slug": "acute_ankle_injury"
+  },
+  {
+    "name": "Синовит тазобедренного сустава",
+    "slug": "hip_synovitis"
+  },
+  {
+    "name": "Артроз тазобедренного сустава",
+    "slug": "hip_osteoarthritis"
+  },
+  {
+    "name": "Вертельный бурсит",
+    "slug": "trochanteric_bursitis"
+  },
+  {
+    "name": "Синдром грушевидной мышцы",
+    "slug": "piriformis_syndrome"
+  },
+  {
+    "name": "Острая травма бедра",
+    "slug": "acute_hip_injury"
+  }
+]

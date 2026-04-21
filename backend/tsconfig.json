@@ -1,32 +1,25 @@
 {
   "compilerOptions": {
-    "target": "ESNext",
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx",
-    "lib": ["ESNext", "esnext.asynciterable"],
-    "baseUrl": "./",
-    "rootDir": "./src",
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
-    "paths": {
-      "#modules/*": ["src/modules/*"],
-      "#common/*": ["src/common/*"],
-      "#infra/*": ["src/infra/*"]
-    },
-    "resolveJsonModule": true,
-    "strict": true,
-    "strictNullChecks": true,
-    "noImplicitAny": true,
-    "declaration": true,
-    "outDir": "./dist",
-    "allowSyntheticDefaultImports": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "resolvePackageJsonExports": true,
     "esModuleInterop": true,
+    "isolatedModules": true,
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ES2023",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strictNullChecks": true,
     "forceConsistentCasingInFileNames": true,
-    "skipLibCheck": true
-  },
-  "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["node_modules", "dist", "seed"],
-  "tsc-alias": {
-    "resolveFullPaths": true
+    "noImplicitAny": false,
+    "strictBindCallApply": false,
+    "noFallthroughCasesInSwitch": false
   }
 }

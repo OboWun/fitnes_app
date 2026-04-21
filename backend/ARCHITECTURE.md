@@ -10,7 +10,7 @@
 
 - **Фреймворк**: NestJS v10+
 - **Язык**: TypeScript 5+
-- **База данных**: MongoDB (через Mongoose) или PostgreSQL (через TypeORM/Prisma)
+- **База данных**:  PostgreSQL (через TypeORM/Prisma)
 - **Валидация**: class-validator, class-transformer
 - **Документация**: Swagger (OpenAPI 3.0)
 - **Тестирование**: Jest, Supertest

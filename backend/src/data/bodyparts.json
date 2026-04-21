@@ -1,32 +1,42 @@
 [
   {
-    "name": "neck"
+    "name": "шея",
+    "slug": "neck"
   },
   {
-    "name": "lower arms"
+    "name": "предплечья",
+    "slug": "lower arms"
   },
   {
-    "name": "shoulders"
+    "name": "плечи",
+    "slug": "shoulders"
   },
   {
-    "name": "cardio"
+    "name": "кардио",
+    "slug": "cardio"
   },
   {
-    "name": "upper arms"
+    "name": "руки",
+    "slug": "upper arms"
   },
   {
-    "name": "chest"
+    "name": "грудь",
+    "slug": "chest"
   },
   {
-    "name": "lower legs"
+    "name": "голени",
+    "slug": "lower legs"
   },
   {
-    "name": "back"
+    "name": "спина",
+    "slug": "back"
   },
   {
-    "name": "upper legs"
+    "name": "бёдра",
+    "slug": "upper legs"
   },
   {
-    "name": "waist"
+    "name": "талия",
+    "slug": "waist"
   }
 ]

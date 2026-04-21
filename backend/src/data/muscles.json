@@ -1,152 +1,233 @@
 [
   {
-    "name": "shins"
+    "name": "большеберцовые мышцы",
+    "slug": "shins"
   },
   {
-    "name": "hands"
+    "name": "кисти рук",
+    "slug": "hands"
   },
   {
-    "name": "sternocleidomastoid"
+    "name": "грудино-ключично-сосцевидная мышца",
+    "slug": "sternocleidomastoid"
   },
   {
-    "name": "soleus"
+    "name": "камбаловидная мышца",
+    "slug": "soleus"
   },
   {
-    "name": "inner thighs"
+    "name": "приводящие мышцы бедра",
+    "slug": "inner thighs"
   },
   {
-    "name": "lower abs"
+    "name": "нижний пресс",
+    "slug": "lower abs"
   },
   {
-    "name": "grip muscles"
+    "name": "мышцы предплечья (хват)",
+    "slug": "grip muscles"
   },
   {
-    "name": "abdominals"
+    "name": "брюшной пресс",
+    "slug": "abdominals"
   },
   {
-    "name": "wrist extensors"
+    "name": "разгибатели запястья",
+    "slug": "wrist extensors"
   },
   {
-    "name": "wrist flexors"
+    "name": "сгибатели запястья",
+    "slug": "wrist flexors"
   },
   {
-    "name": "latissimus dorsi"
+    "name": "широчайшая мышца спины",
+    "slug": "latissimus dorsi",
+    "antagonists": ["pectorals", "upper chest", "chest"]
   },
   {
-    "name": "upper chest"
+    "name": "верхняя часть грудных мышц",
+    "slug": "upper chest",
+    "antagonists": ["latissimus dorsi", "lats", "back", "rhomboids"]
   },
   {
-    "name": "rotator cuff"
+    "name": "вращательная манжета плеча",
+    "slug": "rotator cuff"
   },
   {
-    "name": "wrists"
+    "name": "запястья",
+    "slug": "wrists"
   },
   {
-    "name": "groin"
+    "name": "паховая область",
+    "slug": "groin"
   },
   {
-    "name": "brachialis"
+    "name": "брахиалис",
+    "slug": "brachialis",
+    "antagonists": ["triceps"]
   },
   {
-    "name": "deltoids"
+    "name": "дельтовидные мышцы",
+    "slug": "deltoids",
+    "antagonists": ["latissimus dorsi", "lats"]
   },
   {
-    "name": "feet"
+    "name": "стопы",
+    "slug": "feet"
   },
   {
-    "name": "ankles"
+    "name": "лодыжки",
+    "slug": "ankles"
   },
   {
-    "name": "trapezius"
+    "name": "трапециевидная мышца",
+    "slug": "trapezius",
+    "antagonists": ["abdominals", "core"]
   },
   {
-    "name": "rear deltoids"
+    "name": "задние дельты",
+    "slug": "rear deltoids",
+    "antagonists": ["pectorals", "chest", "upper chest"]
   },
   {
-    "name": "chest"
+    "name": "грудные мышцы",
+    "slug": "chest",
+    "antagonists": ["latissimus dorsi", "lats", "rhomboids", "back"]
   },
   {
-    "name": "quadriceps"
+    "name": "квадрицепсы",
+    "slug": "quadriceps",
+    "antagonists": ["hamstrings"]
   },
   {
-    "name": "back"
+    "name": "спина",
+    "slug": "back",
+    "antagonists": ["abdominals", "core", "chest", "pectorals"]
   },
   {
-    "name": "core"
+    "name": "кор",
+    "slug": "core",
+    "antagonists": ["erector spinae", "lower back"]
   },
   {
-    "name": "shoulders"
+    "name": "плечи",
+    "slug": "shoulders",
+    "antagonists": ["latissimus dorsi", "lats"]
   },
   {
-    "name": "ankle stabilizers"
+    "name": "стабилизаторы голеностопа",
+    "slug": "ankle stabilizers"
   },
   {
-    "name": "rhomboids"
+    "name": "ромбовидные мышцы",
+    "slug": "rhomboids",
+    "antagonists": ["pectorals", "chest", "serratus anterior"]
   },
   {
-    "name": "obliques"
+    "name": "косые мышцы живота",
+    "slug": "obliques",
+    "antagonists": ["erector spinae", "lower back"]
   },
   {
-    "name": "lower back"
+    "name": "поясница",
+    "slug": "lower back",
+    "antagonists": ["abdominals", "core", "obliques"]
   },
   {
-    "name": "hip flexors"
+    "name": "подвздошно-поясничные мышцы",
+    "slug": "hip flexors",
+    "antagonists": ["glutes", "hamstrings"]
   },
   {
-    "name": "levator scapulae"
+    "name": "мышца, поднимающая лопатку",
+    "slug": "levator scapulae"
   },
   {
-    "name": "abductors"
+    "name": "отводящие мышцы бедра",
+    "slug": "abductors",
+    "antagonists": ["adductors"]
   },
   {
-    "name": "serratus anterior"
+    "name": "передняя зубчатая мышца",
+    "slug": "serratus anterior",
+    "antagonists": ["rhomboids", "trapezius"]
   },
   {
-    "name": "traps"
+    "name": "трапеции",
+    "slug": "traps",
+    "antagonists": ["abdominals", "core"]
   },
   {
-    "name": "forearms"
+    "name": "предплечья",
+    "slug": "forearms",
+    "antagonists": ["triceps"]
   },
   {
-    "name": "delts"
+    "name": "дельты",
+    "slug": "delts",
+    "antagonists": ["latissimus dorsi", "lats"]
   },
   {
-    "name": "biceps"
+    "name": "бицепсы",
+    "slug": "biceps",
+    "antagonists": ["triceps"]
   },
   {
-    "name": "upper back"
+    "name": "верхняя часть спины",
+    "slug": "upper back",
+    "antagonists": ["pectorals", "chest"]
   },
   {
-    "name": "spine"
+    "name": "позвоночник",
+    "slug": "spine"
   },
   {
-    "name": "cardiovascular system"
+    "name": "сердечно-сосудистая система",
+    "slug": "cardiovascular system"
   },
   {
-    "name": "triceps"
+    "name": "трицепсы",
+    "slug": "triceps",
+    "antagonists": ["biceps", "brachialis"]
   },
   {
-    "name": "adductors"
+    "name": "приводящие мышцы",
+    "slug": "adductors",
+    "antagonists": ["abductors", "glutes"]
   },
   {
-    "name": "hamstrings"
+    "name": "бицепсы бедра",
+    "slug": "hamstrings",
+    "antagonists": ["quadriceps", "quads"]
   },
   {
-    "name": "glutes"
+    "name": "ягодичные мышцы",
+    "slug": "glutes",
+    "antagonists": ["hip flexors"]
   },
   {
-    "name": "pectorals"
+    "name": "грудные мышцы",
+    "slug": "pectorals",
+    "antagonists": ["latissimus dorsi", "lats", "rhomboids", "back"]
   },
   {
-    "name": "calves"
+    "name": "икры",
+    "slug": "calves",
+    "antagonists": ["tibialis anterior", "shins"]
   },
   {
-    "name": "lats"
+    "name": "широчайшие мышцы спины",
+    "slug": "lats",
+    "antagonists": ["pectorals", "chest", "deltoids"]
   },
   {
-    "name": "quads"
+    "name": "квадрицепсы (сокращённо)",
+    "slug": "quads",
+    "antagonists": ["hamstrings"]
   },
   {
-    "name": "abs"
+    "name": "пресс",
+    "slug": "abs",
+    "antagonists": ["erector spinae", "lower back"]
   }
 ]

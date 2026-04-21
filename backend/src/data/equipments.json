@@ -1,86 +1,114 @@
 [
   {
-    "name": "stepmill machine"
+    "name": "степмиллер",
+    "slug": "stepmill machine"
   },
   {
-    "name": "elliptical machine"
+    "name": "эллиптический тренажёр",
+    "slug": "elliptical machine"
   },
   {
-    "name": "trap bar"
+    "name": "трэп-гриф",
+    "slug": "trap bar"
   },
   {
-    "name": "tire"
+    "name": "шина",
+    "slug": "tire"
   },
   {
-    "name": "stationary bike"
+    "name": "велотренажёр",
+    "slug": "stationary bike"
   },
   {
-    "name": "wheel roller"
+    "name": "роликовый тренажёр",
+    "slug": "wheel roller"
   },
   {
-    "name": "smith machine"
+    "name": "машина Смита",
+    "slug": "smith machine"
   },
   {
-    "name": "hammer"
+    "name": "молот",
+    "slug": "hammer"
   },
   {
-    "name": "skierg machine"
+    "name": "Skierg-тренажёр",
+    "slug": "skierg machine"
   },
   {
-    "name": "roller"
+    "name": "ролик",
+    "slug": "roller"
   },
   {
-    "name": "resistance band"
+    "name": "эспандер",
+    "slug": "resistance band"
   },
   {
-    "name": "bosu ball"
+    "name": "Bosu-мяч",
+    "slug": "bosu ball"
   },
   {
-    "name": "weighted"
+    "name": "утяжелители",
+    "slug": "weighted"
   },
   {
-    "name": "olympic barbell"
+    "name": "олимпийский гриф",
+    "slug": "olympic barbell"
   },
   {
-    "name": "kettlebell"
+    "name": "гиря",
+    "slug": "kettlebell"
   },
   {
-    "name": "upper body ergometer"
+    "name": "эргометр для верхних конечностей",
+    "slug": "upper body ergometer"
   },
   {
-    "name": "sled machine"
+    "name": "саночный тренажёр",
+    "slug": "sled machine"
   },
   {
-    "name": "ez barbell"
+    "name": "EZ-гриф",
+    "slug": "ez barbell"
   },
   {
-    "name": "dumbbell"
+    "name": "гантель",
+    "slug": "dumbbell"
   },
   {
-    "name": "rope"
+    "name": "канат",
+    "slug": "rope"
   },
   {
-    "name": "barbell"
+    "name": "штанга",
+    "slug": "barbell"
   },
   {
-    "name": "band"
+    "name": "лента",
+    "slug": "band"
   },
   {
-    "name": "stability ball"
+    "name": "фитбол",
+    "slug": "stability ball"
   },
   {
-    "name": "medicine ball"
+    "name": "медбол",
+    "slug": "medicine ball"
   },
   {
-    "name": "assisted"
+    "name": "ассистент",
+    "slug": "assisted"
   },
   {
-    "name": "leverage machine"
+    "name": "рычажный тренажёр",
+    "slug": "leverage machine"
   },
   {
-    "name": "cable"
+    "name": "кабельный тренажёр",
+    "slug": "cable"
   },
   {
-    "name": "body weight"
+    "name": "собственный вес",
+    "slug": "body weight"
   }
 ]

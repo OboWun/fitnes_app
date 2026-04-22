@@ -1,51 +1,5 @@
-```
-# Dependencies
-node_modules/
-
-# Build outputs
-dist/
-build/
-target/
-
-# Python cache
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-
-# Virtual environments
-venv/
-.venv/
-env/
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# Logs
-*.log
-
-# Environment variables
-.env
-.env.local
-*.env.*
-
-# Coverage reports
-coverage/
-htmlcov/
-.coverage
-
-# Temporary files
-*.tmp
-*.temp
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# TypeScript/JavaScript build artifacts
-*.js.map
-*.tsbuildinfo
-```
+backend/data/contraindications.ts
+backend/data/equipments.ts
+backend/data/exercises.ts
+backend/data/muscles.ts
+backend/data/bodyparts.ts

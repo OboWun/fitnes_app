@@ -7,45 +7,57 @@ dist/
 build/
 target/
 
-# Python cache
+# Python
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
-
-# Virtual environments
+*.py.class
+.Python
+env/
 venv/
 .venv/
-env/
+.ENV
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+*.tmp
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
 
-# IDE files
+# TypeScript/JavaScript
+*.tsbuildinfo
+*.js.map
+*.jsx.map
+*.ts.map
+*.tsx.map
+
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 
+# Environment
+.env
+.env.local
+*.env
+*.env.*
+
 # Logs
 *.log
 
-# Environment variables
-.env
-.env.local
-*.env.*
-
-# Coverage reports
+# Coverage
 coverage/
 htmlcov/
 .coverage
-
-# Temporary files
-*.tmp
-*.temp
-
-# OS generated files
-.DS_Store
-Thumbs.db
-
-# TypeScript/JavaScript build artifacts
-*.js.map
-*.tsbuildinfo
 ```

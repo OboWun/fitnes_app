@@ -94,6 +94,13 @@ export class ExercisesService {
     return {
       exerciseId: exercise.exerciseId,
       name: exercise.name,
+      alias: exercise.alias,
+      exerciseType: exercise.exerciseType,
+      description: exercise.description,
+      confidence: exercise.confidence,
+      difficulty: exercise.difficulty,
+      movementPattern: exercise.movementPattern,
+      variations: exercise.variations,
       slug: exercise.slug,
       gifUrl: exercise.gifUrl,
       targetMuscles: exercise.targetMuscles

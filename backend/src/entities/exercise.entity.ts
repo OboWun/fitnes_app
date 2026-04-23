@@ -1,7 +1,4 @@
-export interface ContraindicationSeverity {
-  slug: string;
-  severity: 'forbidden' | 'not_recommended' | 'low_weight';
-}
+import type { ContraindicationSeverity } from './contraindication.entity.js';
 
 export interface Exercise {
   exerciseId: string;

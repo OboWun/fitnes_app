@@ -10,7 +10,10 @@ export class BodypartsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all body parts' })
-  @ApiOkResponse({ type: [BodypartResponseDto], description: 'List of all body parts' })
+  @ApiOkResponse({
+    type: [BodypartResponseDto],
+    description: 'List of all body parts',
+  })
   findAll(): BodypartResponseDto[] {
     return this.bodypartsService.findAll();
   }

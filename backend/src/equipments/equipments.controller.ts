@@ -10,7 +10,10 @@ export class EquipmentsController {
 
   @Get()
   @ApiOperation({ summary: 'Get all equipments' })
-  @ApiOkResponse({ type: [EquipmentResponseDto], description: 'List of all equipments' })
+  @ApiOkResponse({
+    type: [EquipmentResponseDto],
+    description: 'List of all equipments',
+  })
   findAll(): EquipmentResponseDto[] {
     return this.equipmentsService.findAll();
   }

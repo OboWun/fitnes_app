@@ -1,6 +1,10 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { EXERCISES_REPOSITORY } from '../common/repositories/index.js';
-import type { IExercisesRepository, ExerciseFilterParams, PaginatedResult } from '../common/repositories/index.js';
+import type {
+  IExercisesRepository,
+  ExerciseFilterParams,
+  PaginatedResult,
+} from '../common/repositories/index.js';
 import { MUSCLES_REPOSITORY } from '../common/repositories/index.js';
 import type { IMusclesRepository } from '../common/repositories/index.js';
 import { BODYPARTS_REPOSITORY } from '../common/repositories/index.js';
@@ -77,7 +81,12 @@ export class ExercisesService {
       }
     }
 
-    const result = this.exercisesRepository.findAntagonist(slug, antagonistSlugs, page, limit);
+    const result = this.exercisesRepository.findAntagonist(
+      slug,
+      antagonistSlugs,
+      page,
+      limit,
+    );
     return new PaginatedResponseDto(
       result.data.map((e) => this.toResponseDto(e)),
       result.total,

@@ -5,26 +5,59 @@ import { MuscleResponseDto } from '../../muscles/dto/muscle-response.dto.js';
 import { BodypartResponseDto } from '../../bodyparts/dto/bodypart-response.dto.js';
 
 export class ExerciseResponseDto {
-  @ApiProperty({ example: 'trmte8s', description: 'Unique exercise identifier' })
+  @ApiProperty({
+    example: 'trmte8s',
+    description: 'Unique exercise identifier',
+  })
   exerciseId: string;
 
   @ApiProperty({ example: 'С Эспандером Шраги', description: 'Exercise name' })
   name: string;
 
-  @ApiPropertyOptional({ type: [String], description: 'Alternative exercise names' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Alternative exercise names',
+  })
   alias?: string[];
 
   @ApiPropertyOptional({
     example: 'strength',
-    enum: ['strength', 'hypertrophy', 'endurance', 'mobility', 'stability', 'cardio', 'plyometric', 'rehab', 'stretching'],
+    enum: [
+      'strength',
+      'hypertrophy',
+      'endurance',
+      'mobility',
+      'stability',
+      'cardio',
+      'plyometric',
+      'rehab',
+      'stretching',
+    ],
     description: 'Exercise type',
   })
-  exerciseType?: 'strength' | 'hypertrophy' | 'endurance' | 'mobility' | 'stability' | 'cardio' | 'plyometric' | 'rehab' | 'stretching';
+  exerciseType?:
+    | 'strength'
+    | 'hypertrophy'
+    | 'endurance'
+    | 'mobility'
+    | 'stability'
+    | 'cardio'
+    | 'plyometric'
+    | 'rehab'
+    | 'stretching';
 
-  @ApiPropertyOptional({ example: 'Краткое описание упражнения на русском языке.', description: 'Short Russian description' })
+  @ApiPropertyOptional({
+    example: 'Краткое описание упражнения на русском языке.',
+    description: 'Short Russian description',
+  })
   description?: string;
 
-  @ApiPropertyOptional({ example: 0.86, minimum: 0, maximum: 1, description: 'Confidence score from 0 to 1' })
+  @ApiPropertyOptional({
+    example: 0.86,
+    minimum: 0,
+    maximum: 1,
+    description: 'Confidence score from 0 to 1',
+  })
   confidence?: number;
 
   @ApiPropertyOptional({
@@ -36,18 +69,67 @@ export class ExerciseResponseDto {
 
   @ApiPropertyOptional({
     example: 'pull',
-    enum: ['push', 'pull', 'squat', 'hinge', 'lunge', 'carry', 'rotate', 'anti_rotate', 'jump', 'crawl', 'press', 'row', 'curl', 'extension', 'flexion', 'abduction', 'adduction', 'rotation', 'stabilization', 'locomotion', 'stretch'],
+    enum: [
+      'push',
+      'pull',
+      'squat',
+      'hinge',
+      'lunge',
+      'carry',
+      'rotate',
+      'anti_rotate',
+      'jump',
+      'crawl',
+      'press',
+      'row',
+      'curl',
+      'extension',
+      'flexion',
+      'abduction',
+      'adduction',
+      'rotation',
+      'stabilization',
+      'locomotion',
+      'stretch',
+    ],
     description: 'Primary movement pattern',
   })
-  movementPattern?: 'push' | 'pull' | 'squat' | 'hinge' | 'lunge' | 'carry' | 'rotate' | 'anti_rotate' | 'jump' | 'crawl' | 'press' | 'row' | 'curl' | 'extension' | 'flexion' | 'abduction' | 'adduction' | 'rotation' | 'stabilization' | 'locomotion' | 'stretch';
+  movementPattern?:
+    | 'push'
+    | 'pull'
+    | 'squat'
+    | 'hinge'
+    | 'lunge'
+    | 'carry'
+    | 'rotate'
+    | 'anti_rotate'
+    | 'jump'
+    | 'crawl'
+    | 'press'
+    | 'row'
+    | 'curl'
+    | 'extension'
+    | 'flexion'
+    | 'abduction'
+    | 'adduction'
+    | 'rotation'
+    | 'stabilization'
+    | 'locomotion'
+    | 'stretch';
 
-  @ApiPropertyOptional({ type: [String], description: 'Variations using existing exercise slugs' })
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Variations using existing exercise slugs',
+  })
   variations?: string[];
 
   @ApiProperty({ example: 'band-shrug', description: 'Exercise slug' })
   slug: string;
 
-  @ApiProperty({ example: 'https://static.exercisedb.dev/media/trmte8s.gif', description: 'GIF URL' })
+  @ApiProperty({
+    example: 'https://static.exercisedb.dev/media/trmte8s.gif',
+    description: 'GIF URL',
+  })
   gifUrl: string;
 
   @ApiProperty({ type: [MuscleResponseDto], description: 'Target muscles' })
@@ -59,12 +141,18 @@ export class ExerciseResponseDto {
   @ApiProperty({ type: [EquipmentResponseDto], description: 'Equipments' })
   equipments: EquipmentResponseDto[];
 
-  @ApiPropertyOptional({ type: [MuscleResponseDto], description: 'Secondary muscles' })
+  @ApiPropertyOptional({
+    type: [MuscleResponseDto],
+    description: 'Secondary muscles',
+  })
   secondaryMuscles?: MuscleResponseDto[];
 
   @ApiProperty({ type: [String], description: 'Exercise instructions' })
   instructions: string[];
 
-  @ApiPropertyOptional({ type: [ContraindicationSeverityResponseDto], description: 'Contraindications' })
+  @ApiPropertyOptional({
+    type: [ContraindicationSeverityResponseDto],
+    description: 'Contraindications',
+  })
   contraindications?: ContraindicationSeverityResponseDto[];
 }

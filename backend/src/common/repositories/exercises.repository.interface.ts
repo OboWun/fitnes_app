@@ -15,8 +15,21 @@ export interface PaginatedResult<T> {
 }
 
 export interface IExercisesRepository {
-  findPaginated(page: number, limit: number, filters?: ExerciseFilterParams): PaginatedResult<Exercise>;
+  findPaginated(
+    page: number,
+    limit: number,
+    filters?: ExerciseFilterParams,
+  ): PaginatedResult<Exercise>;
   findBySlug(slug: string): Exercise | undefined;
-  findSimilar(slug: string, page: number, limit: number): PaginatedResult<Exercise>;
-  findAntagonist(slug: string, antagonistMuscles: string[], page: number, limit: number): PaginatedResult<Exercise>;
+  findSimilar(
+    slug: string,
+    page: number,
+    limit: number,
+  ): PaginatedResult<Exercise>;
+  findAntagonist(
+    slug: string,
+    antagonistMuscles: string[],
+    page: number,
+    limit: number,
+  ): PaginatedResult<Exercise>;
 }

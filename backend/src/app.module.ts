@@ -5,9 +5,20 @@ import { BodypartsModule } from './bodyparts/bodyparts.module.js';
 import { EquipmentsModule } from './equipments/equipments.module.js';
 import { MusclesModule } from './muscles/muscles.module.js';
 import { ExercisesModule } from './exercises/exercises.module.js';
+import { ContraindicationsModule } from './contraindications/contraindications.module.js';
+import { UsersModule } from './users/users.module.js';
+import { AuthModule } from './auth/auth.module.js';
 
 @Module({
-  imports: [BodypartsModule, EquipmentsModule, MusclesModule, ExercisesModule],
+  imports: [
+    BodypartsModule,
+    EquipmentsModule,
+    MusclesModule,
+    ExercisesModule,
+    ContraindicationsModule,
+    UsersModule,
+    AuthModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

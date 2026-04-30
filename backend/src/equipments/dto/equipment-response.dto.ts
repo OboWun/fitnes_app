@@ -4,6 +4,9 @@ export class EquipmentResponseDto {
   @ApiProperty({ example: 'гантель', description: 'Equipment name' })
   name: string;
 
-  @ApiProperty({ example: 'dumbbell', description: 'Equipment slug identifier' })
+  @ApiProperty({
+    example: 'dumbbell',
+    description: 'Equipment slug identifier',
+  })
   slug: string;
 }

@@ -2,7 +2,11 @@ import { Injectable } from '@nestjs/common';
 import * as path from 'path';
 import * as fs from 'fs';
 import type { Exercise } from '../entities/index.js';
-import type { IExercisesRepository, ExerciseFilterParams, PaginatedResult } from '../common/repositories/index.js';
+import type {
+  IExercisesRepository,
+  ExerciseFilterParams,
+  PaginatedResult,
+} from '../common/repositories/index.js';
 
 @Injectable()
 export class ExercisesJsonRepository implements IExercisesRepository {
@@ -14,7 +18,11 @@ export class ExercisesJsonRepository implements IExercisesRepository {
     this.exercises = JSON.parse(raw) as Exercise[];
   }
 
-  findPaginated(page: number, limit: number, filters?: ExerciseFilterParams): PaginatedResult<Exercise> {
+  findPaginated(
+    page: number,
+    limit: number,
+    filters?: ExerciseFilterParams,
+  ): PaginatedResult<Exercise> {
     const filtered = this.applyFilters(filters);
     const total = filtered.length;
     const offset = (page - 1) * limit;
@@ -25,7 +33,11 @@ export class ExercisesJsonRepository implements IExercisesRepository {
     return this.exercises.find((e) => e.slug === slug);
   }
 
-  findSimilar(slug: string, page: number, limit: number): PaginatedResult<Exercise> {
+  findSimilar(
+    slug: string,
+    page: number,
+    limit: number,
+  ): PaginatedResult<Exercise> {
     const exercise = this.findBySlug(slug);
     if (!exercise) {
       return { data: [], total: 0 };
@@ -115,7 +127,10 @@ export class ExercisesJsonRepository implements IExercisesRepository {
     return result;
   }
 
-  private bestEquipmentIndex(exerciseEquipments: string[], preferredOrder: string[]): number {
+  private bestEquipmentIndex(
+    exerciseEquipments: string[],
+    preferredOrder: string[],
+  ): number {
     let best = preferredOrder.length;
     for (const eq of exerciseEquipments) {
       const idx = preferredOrder.indexOf(eq.toLowerCase());

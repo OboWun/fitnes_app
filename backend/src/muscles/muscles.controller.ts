@@ -10,7 +10,10 @@ export class MusclesController {
 
   @Get()
   @ApiOperation({ summary: 'Get all muscles' })
-  @ApiOkResponse({ type: [MuscleResponseDto], description: 'List of all muscles' })
+  @ApiOkResponse({
+    type: [MuscleResponseDto],
+    description: 'List of all muscles',
+  })
   findAll(): MuscleResponseDto[] {
     return this.musclesService.findAll();
   }

@@ -1,7 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ContraindicationSeverityResponseDto {
-  @ApiProperty({ example: 'herniated_disc', description: 'Contraindication slug' })
+  @ApiProperty({
+    example: 'herniated_disc',
+    description: 'Contraindication slug',
+  })
   slug: string;
 
   @ApiProperty({

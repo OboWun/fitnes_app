@@ -9,7 +9,13 @@ export class EquipmentsJsonRepository implements IEquipmentsRepository {
   private readonly equipments: Equipment[];
 
   constructor() {
-    const filePath = path.join(__dirname, '..', '..', 'data', 'equipments.json');
+    const filePath = path.join(
+      __dirname,
+      '..',
+      '..',
+      'data',
+      'equipments.json',
+    );
     const raw = fs.readFileSync(filePath, 'utf-8');
     this.equipments = JSON.parse(raw) as Equipment[];
   }

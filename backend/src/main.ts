@@ -17,6 +17,7 @@ async function bootstrap() {
     .setTitle('Fitness App API')
     .setDescription('API for exercises, body parts, and equipments')
     .setVersion('1.0')
+    .addBearerAuth()
     .build();
 
   const document = SwaggerModule.createDocument(app, config);

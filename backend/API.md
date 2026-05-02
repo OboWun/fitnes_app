@@ -49,6 +49,26 @@ Swagger UI: `/api/docs`
 | GET | `/muscles` | No | Все мышцы (с антагонистами) |
 | GET | `/contraindications` | No | Все противопоказания |
 
+## Workout Templates
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/workout-templates` | JWT | Все шаблоны пользователя |
+| GET | `/workout-templates/:id` | JWT | Шаблон по ID |
+| POST | `/workout-templates` | JWT | Создать шаблон |
+| PATCH | `/workout-templates/:id` | JWT | Обновить шаблон |
+| DELETE | `/workout-templates/:id` | JWT | Удалить шаблон |
+| GET | `/workout-templates/schedule/all` | JWT | Расписание пользователя |
+| POST | `/workout-templates/schedule` | JWT | Добавить в расписание |
+| PATCH | `/workout-templates/schedule/:scheduleId` | JWT | Обновить запись расписания |
+| DELETE | `/workout-templates/schedule/:scheduleId` | JWT | Удалить запись расписания |
+
+## Static Files
+
+| Route | Description |
+|---|---|
+| `/media/<filename>.gif` | GIF-файлы упражнений (public) |
+
 ## Response Format
 
 Пагинированный ответ:

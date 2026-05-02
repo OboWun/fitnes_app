@@ -8,6 +8,7 @@ REST API для мобильного приложения по созданию 
 - Просматривать каталог упражнений с фильтрацией по мышцам, оборудованию и противопоказаниям
 - Находить похожие и антагонистические упражнения
 - Управлять профилем (вес, рост, возраст, противопоказания)
+- Создавать шаблоны тренировок и расписание
 - Аутентифицироваться по устройству (без логина/пароля)
 
 ## Стек
@@ -16,6 +17,8 @@ REST API для мобильного приложения по созданию 
 |---|---|---|
 | NestJS | 11 | Фреймворк |
 | TypeScript | 5 | Язык |
+| PostgreSQL | 18 | База данных |
+| pg (node-postgres) | 8 | Драйвер PostgreSQL (raw SQL, без ORM) |
 | Passport + JWT | — | Аутентификация |
 | class-validator | — | Валидация |
 | Swagger (OpenAPI) | — | Документация API |
@@ -23,12 +26,25 @@ REST API для мобильного приложения по созданию 
 
 ## Хранилище данных
 
-JSON-файлы в `data/` (exercises, muscles, bodyparts, equipments, contraindications, users). Репозитории абстрагированы через интерфейсы — можно заменить на БД.
+PostgreSQL. Схема — в `sql/schema.sql`, сидинг из JSON — `sql/seed.ts`. Репозитории абстрагированы через интерфейсы (`Symbol`-токены DI).
 
 ## Запуск
 
 ```bash
 npm install
+
+# Настроить .env (см. .env.example)
+cp .env.example .env
+
+# Создать БД и применить схему
+psql -U postgres -c "CREATE DATABASE fitness_app;"
+psql -U postgres -d fitness_app -f sql/schema.sql
+psql -U postgres -d fitness_app -c "CREATE EXTENSION IF NOT EXISTS pg_trgm; CREATE INDEX idx_exercises_name ON exercises USING gin (name gin_trgm_ops);"
+
+# Заполнить данными (из JSON)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/fitness_app npx tsx sql/seed.ts
+
+# Запуск
 npm run start:dev    # development (watch mode)
 npm run start:prod   # production
 ```
@@ -39,8 +55,10 @@ Swagger-документация: `http://localhost:3000/api/docs`
 
 | Переменная | Описание | По умолчанию |
 |---|---|---|
+| `DATABASE_URL` | Connection string PostgreSQL | — |
 | `PORT` | Порт сервера | `3000` |
 | `JWT_SECRET` | Секрет для JWT-токенов | hardcoded fallback |
+| `APP_URL` | Базовый URL для генерации gifUrl | `http://localhost:3000` |
 
 ## Скрипты
 
@@ -48,14 +66,14 @@ Swagger-документация: `http://localhost:3000/api/docs`
 |---|---|
 | `npm run build` | Сборка |
 | `npm run start:dev` | Dev-режим с hot-reload |
+| `npm run start:prod` | Production-режим |
 | `npm run test` | Unit-тесты |
 | `npm run test:e2e` | E2E-тесты |
 | `npm run lint` | Линтинг + автофикс |
-| `npm run enrich:exercises` | Обогащение данных упражнений (перевод, типы, сложность) |
 
 ## Документация проекта
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — архитектура и структура
-- [DONE.md](./DONE.md) — статус готовности
 - [API.md](./API.md) — справочник эндпоинтов
 - [DATA-MODEL.md](./DATA-MODEL.md) — модель данных
+- [DATA_FLOW.md](./DATA_FLOW.md) — потоки данных Backend ↔ PostgreSQL

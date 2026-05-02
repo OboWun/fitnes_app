@@ -1,6 +1,6 @@
 # Data Model
 
-Все сущности определены в `src/entities/`. Хранятся в PostgreSQL (миграция с `data/*.json`).
+Все сущности определены в `src/entities/`. Хранятся в PostgreSQL (схема — `sql/schema.sql`).
 
 ## Exercise
 

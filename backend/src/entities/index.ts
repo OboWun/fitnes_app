@@ -7,3 +7,9 @@ export type {
 } from './contraindication.entity.js';
 export type { Exercise } from './exercise.entity.js';
 export type { User } from './user.entity.js';
+export type {
+  WorkoutTemplate,
+  WorkoutExercise,
+  ScheduledWorkout,
+  DayOfWeek,
+} from './workout-template.entity.js';

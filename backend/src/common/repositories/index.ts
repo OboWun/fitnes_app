@@ -24,3 +24,9 @@ export {
   CONTRAINDICATIONS_REPOSITORY,
   type IContraindicationsRepository,
 } from './contraindications.repository.interface.js';
+export {
+  WORKOUT_TEMPLATES_REPOSITORY,
+  SCHEDULED_WORKOUTS_REPOSITORY,
+  type IWorkoutTemplatesRepository,
+  type IScheduledWorkoutsRepository,
+} from './workout-templates.repository.interface.js';

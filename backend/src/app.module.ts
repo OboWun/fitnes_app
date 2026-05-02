@@ -8,6 +8,7 @@ import { ExercisesModule } from './exercises/exercises.module.js';
 import { ContraindicationsModule } from './contraindications/contraindications.module.js';
 import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { WorkoutTemplatesModule } from './workout-templates/workout-templates.module.js';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { AuthModule } from './auth/auth.module.js';
     ContraindicationsModule,
     UsersModule,
     AuthModule,
+    WorkoutTemplatesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import type { User } from '../entities/index.js';
-import type { IUsersRepository } from '../common/repositories/index.js';
+import { USERS_REPOSITORY, type IUsersRepository } from '../common/repositories/index.js';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly usersRepository: IUsersRepository) {}
+  constructor(@Inject(USERS_REPOSITORY) private readonly usersRepository: IUsersRepository) {}
 
   findById(id: string): User | undefined {
     return this.usersRepository.findById(id);

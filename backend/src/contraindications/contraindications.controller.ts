@@ -16,7 +16,7 @@ export class ContraindicationsController {
     type: [ContraindicationResponseDto],
     description: 'List of all contraindications',
   })
-  findAll(): ContraindicationResponseDto[] {
+  async findAll(): Promise<ContraindicationResponseDto[]> {
     return this.contraindicationsService.findAll();
   }
 }

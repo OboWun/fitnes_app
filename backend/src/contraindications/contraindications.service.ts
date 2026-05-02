@@ -10,15 +10,16 @@ export class ContraindicationsService {
     private readonly repository: IContraindicationsRepository,
   ) {}
 
-  findAll(): Contraindication[] {
+  findAll(): Promise<Contraindication[]> {
     return this.repository.findAll();
   }
 
-  findBySlug(slug: string): Contraindication | undefined {
+  async findBySlug(slug: string): Promise<Contraindication | undefined> {
     return this.repository.findBySlug(slug);
   }
 
-  isValidSlug(slug: string): boolean {
-    return this.repository.findBySlug(slug) !== undefined;
+  async isValidSlug(slug: string): Promise<boolean> {
+    const result = await this.repository.findBySlug(slug);
+    return result !== undefined;
   }
 }

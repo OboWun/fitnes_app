@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller.js';
 import { AppService } from './app.service.js';
+import { DatabaseModule } from './common/database/database.module.js';
 import { BodypartsModule } from './bodyparts/bodyparts.module.js';
 import { EquipmentsModule } from './equipments/equipments.module.js';
 import { MusclesModule } from './muscles/muscles.module.js';
@@ -12,6 +13,7 @@ import { WorkoutTemplatesModule } from './workout-templates/workout-templates.mo
 
 @Module({
   imports: [
+    DatabaseModule,
     BodypartsModule,
     EquipmentsModule,
     MusclesModule,

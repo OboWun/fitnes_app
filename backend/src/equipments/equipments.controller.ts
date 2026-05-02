@@ -14,7 +14,7 @@ export class EquipmentsController {
     type: [EquipmentResponseDto],
     description: 'List of all equipments',
   })
-  findAll(): EquipmentResponseDto[] {
+  async findAll(): Promise<EquipmentResponseDto[]> {
     return this.equipmentsService.findAll();
   }
 }

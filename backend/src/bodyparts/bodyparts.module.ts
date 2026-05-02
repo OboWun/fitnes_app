@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { BodypartsController } from './bodyparts.controller.js';
 import { BodypartsService } from './bodyparts.service.js';
-import { BodypartsJsonRepository } from './bodyparts-json.repository.js';
+import { BodypartsSqlRepository } from './bodyparts-sql.repository.js';
 import { BODYPARTS_REPOSITORY } from '../common/repositories/index.js';
 
 @Module({
@@ -10,7 +10,7 @@ import { BODYPARTS_REPOSITORY } from '../common/repositories/index.js';
     BodypartsService,
     {
       provide: BODYPARTS_REPOSITORY,
-      useClass: BodypartsJsonRepository,
+      useClass: BodypartsSqlRepository,
     },
   ],
   exports: [BODYPARTS_REPOSITORY],

@@ -14,7 +14,7 @@ export class MusclesController {
     type: [MuscleResponseDto],
     description: 'List of all muscles',
   })
-  findAll(): MuscleResponseDto[] {
+  async findAll(): Promise<MuscleResponseDto[]> {
     return this.musclesService.findAll();
   }
 }

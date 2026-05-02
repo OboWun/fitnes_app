@@ -10,11 +10,11 @@ export class MusclesService {
     private readonly musclesRepository: IMusclesRepository,
   ) {}
 
-  findAll(): Muscle[] {
+  findAll(): Promise<Muscle[]> {
     return this.musclesRepository.findAll();
   }
 
-  findAntagonists(slug: string): Muscle[] {
+  findAntagonists(slug: string): Promise<Muscle[]> {
     return this.musclesRepository.findAntagonists(slug);
   }
 }

@@ -14,7 +14,7 @@ export class BodypartsController {
     type: [BodypartResponseDto],
     description: 'List of all body parts',
   })
-  findAll(): BodypartResponseDto[] {
+  async findAll(): Promise<BodypartResponseDto[]> {
     return this.bodypartsService.findAll();
   }
 }

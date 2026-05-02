@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { UsersController } from './users.controller.js';
 import { UsersService } from './users.service.js';
-import { UsersJsonRepository } from './users-json.repository.js';
+import { UsersSqlRepository } from './users-sql.repository.js';
 import { USERS_REPOSITORY } from '../common/repositories/index.js';
 
 @Module({
@@ -10,7 +10,7 @@ import { USERS_REPOSITORY } from '../common/repositories/index.js';
     UsersService,
     {
       provide: USERS_REPOSITORY,
-      useClass: UsersJsonRepository,
+      useClass: UsersSqlRepository,
     },
   ],
   exports: [UsersService],

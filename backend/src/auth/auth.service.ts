@@ -10,10 +10,10 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  authenticate(deviceId: string): { accessToken: string; user: User } {
-    let user = this.usersService.findByDeviceId(deviceId);
+  async authenticate(deviceId: string): Promise<{ accessToken: string; user: User }> {
+    let user = await this.usersService.findByDeviceId(deviceId);
     if (!user) {
-      user = this.usersService.create(deviceId);
+      user = await this.usersService.create(deviceId);
     }
 
     const payload = { sub: user.id, deviceId: user.deviceId };
@@ -22,7 +22,7 @@ export class AuthService {
     return { accessToken, user };
   }
 
-  validateUser(id: string): User | undefined {
+  async validateUser(id: string): Promise<User | undefined> {
     return this.usersService.findById(id);
   }
 }

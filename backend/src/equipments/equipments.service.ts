@@ -10,7 +10,7 @@ export class EquipmentsService {
     private readonly equipmentsRepository: IEquipmentsRepository,
   ) {}
 
-  findAll(): Equipment[] {
+  findAll(): Promise<Equipment[]> {
     return this.equipmentsRepository.findAll();
   }
 }

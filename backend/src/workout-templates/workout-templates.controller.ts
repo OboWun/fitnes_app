@@ -47,7 +47,7 @@ export class WorkoutTemplatesController {
     type: [WorkoutTemplateResponseDto],
     description: 'List of workout templates',
   })
-  findAll(@CurrentUser() user: User): WorkoutTemplateResponseDto[] {
+  async findAll(@CurrentUser() user: User): Promise<WorkoutTemplateResponseDto[]> {
     return this.workoutTemplatesService.findAll(user.id);
   }
 
@@ -58,10 +58,10 @@ export class WorkoutTemplatesController {
     type: WorkoutTemplateResponseDto,
     description: 'Workout template',
   })
-  findOne(
+  async findOne(
     @CurrentUser() user: User,
     @Param('id') id: string,
-  ): WorkoutTemplateResponseDto {
+  ): Promise<WorkoutTemplateResponseDto> {
     return this.workoutTemplatesService.findOne(user.id, id);
   }
 
@@ -72,10 +72,10 @@ export class WorkoutTemplatesController {
     description: 'Created workout template',
   })
   @UsePipes(new ValidationPipe({ whitelist: true }))
-  create(
+  async create(
     @CurrentUser() user: User,
     @Body() dto: CreateWorkoutTemplateDto,
-  ): WorkoutTemplateResponseDto {
+  ): Promise<WorkoutTemplateResponseDto> {
     return this.workoutTemplatesService.create(user.id, dto);
   }
 
@@ -87,11 +87,11 @@ export class WorkoutTemplatesController {
     description: 'Updated workout template',
   })
   @UsePipes(new ValidationPipe({ whitelist: true }))
-  update(
+  async update(
     @CurrentUser() user: User,
     @Param('id') id: string,
     @Body() dto: UpdateWorkoutTemplateDto,
-  ): WorkoutTemplateResponseDto {
+  ): Promise<WorkoutTemplateResponseDto> {
     return this.workoutTemplatesService.update(user.id, id, dto);
   }
 
@@ -99,8 +99,8 @@ export class WorkoutTemplatesController {
   @ApiOperation({ summary: 'Delete a workout template' })
   @ApiParam({ name: 'id', description: 'Template ID' })
   @ApiNoContentResponse({ description: 'Template deleted' })
-  delete(@CurrentUser() user: User, @Param('id') id: string): void {
-    this.workoutTemplatesService.delete(user.id, id);
+  async delete(@CurrentUser() user: User, @Param('id') id: string): Promise<void> {
+    await this.workoutTemplatesService.delete(user.id, id);
   }
 
   @Get('schedule/all')
@@ -111,7 +111,7 @@ export class WorkoutTemplatesController {
     type: [ScheduledWorkoutResponseDto],
     description: 'List of scheduled workouts',
   })
-  getSchedule(@CurrentUser() user: User): ScheduledWorkoutResponseDto[] {
+  async getSchedule(@CurrentUser() user: User): Promise<ScheduledWorkoutResponseDto[]> {
     return this.workoutTemplatesService.getSchedule(user.id);
   }
 
@@ -122,10 +122,10 @@ export class WorkoutTemplatesController {
     description: 'Created schedule entry',
   })
   @UsePipes(new ValidationPipe({ whitelist: true }))
-  scheduleWorkout(
+  async scheduleWorkout(
     @CurrentUser() user: User,
     @Body() dto: ScheduleWorkoutDto,
-  ): ScheduledWorkoutResponseDto {
+  ): Promise<ScheduledWorkoutResponseDto> {
     return this.workoutTemplatesService.scheduleWorkout(user.id, dto);
   }
 
@@ -139,11 +139,11 @@ export class WorkoutTemplatesController {
     description: 'Updated schedule entry',
   })
   @UsePipes(new ValidationPipe({ whitelist: true }))
-  updateScheduledWorkout(
+  async updateScheduledWorkout(
     @CurrentUser() user: User,
     @Param('scheduleId') scheduleId: string,
     @Body() dto: UpdateScheduledWorkoutDto,
-  ): ScheduledWorkoutResponseDto {
+  ): Promise<ScheduledWorkoutResponseDto> {
     return this.workoutTemplatesService.updateScheduledWorkout(
       user.id,
       scheduleId,
@@ -155,10 +155,10 @@ export class WorkoutTemplatesController {
   @ApiOperation({ summary: 'Remove a scheduled workout' })
   @ApiParam({ name: 'scheduleId', description: 'Schedule entry ID' })
   @ApiNoContentResponse({ description: 'Schedule entry deleted' })
-  deleteScheduledWorkout(
+  async deleteScheduledWorkout(
     @CurrentUser() user: User,
     @Param('scheduleId') scheduleId: string,
-  ): void {
-    this.workoutTemplatesService.deleteScheduledWorkout(user.id, scheduleId);
+  ): Promise<void> {
+    await this.workoutTemplatesService.deleteScheduledWorkout(user.id, scheduleId);
   }
 }

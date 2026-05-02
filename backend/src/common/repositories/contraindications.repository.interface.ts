@@ -5,6 +5,6 @@ export const CONTRAINDICATIONS_REPOSITORY = Symbol(
 );
 
 export interface IContraindicationsRepository {
-  findAll(): Contraindication[];
-  findBySlug(slug: string): Contraindication | undefined;
+  findAll(): Promise<Contraindication[]>;
+  findBySlug(slug: string): Promise<Contraindication | undefined>;
 }

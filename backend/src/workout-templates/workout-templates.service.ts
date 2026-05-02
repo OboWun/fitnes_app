@@ -30,24 +30,23 @@ export class WorkoutTemplatesService {
     private readonly scheduledRepository: IScheduledWorkoutsRepository,
   ) {}
 
-  findAll(userId: string): WorkoutTemplateResponseDto[] {
-    return this.templatesRepository
-      .findByUserId(userId)
-      .map((t) => this.toTemplateResponseDto(t));
+  async findAll(userId: string): Promise<WorkoutTemplateResponseDto[]> {
+    const templates = await this.templatesRepository.findByUserId(userId);
+    return templates.map((t) => this.toTemplateResponseDto(t));
   }
 
-  findOne(userId: string, id: string): WorkoutTemplateResponseDto {
-    const template = this.templatesRepository.findById(id);
+  async findOne(userId: string, id: string): Promise<WorkoutTemplateResponseDto> {
+    const template = await this.templatesRepository.findById(id);
     if (!template || template.userId !== userId) {
       throw new NotFoundException(`Workout template with id "${id}" not found`);
     }
     return this.toTemplateResponseDto(template);
   }
 
-  create(
+  async create(
     userId: string,
     dto: CreateWorkoutTemplateDto,
-  ): WorkoutTemplateResponseDto {
+  ): Promise<WorkoutTemplateResponseDto> {
     const exercises: WorkoutExercise[] = dto.exercises.map((e) => ({
       exerciseSlug: e.exerciseSlug,
       sets: e.sets,
@@ -57,7 +56,7 @@ export class WorkoutTemplatesService {
       order: e.order,
     }));
 
-    const template = this.templatesRepository.create({
+    const template = await this.templatesRepository.create({
       userId,
       name: dto.name,
       description: dto.description,
@@ -66,12 +65,12 @@ export class WorkoutTemplatesService {
     return this.toTemplateResponseDto(template);
   }
 
-  update(
+  async update(
     userId: string,
     id: string,
     dto: UpdateWorkoutTemplateDto,
-  ): WorkoutTemplateResponseDto {
-    const existing = this.templatesRepository.findById(id);
+  ): Promise<WorkoutTemplateResponseDto> {
+    const existing = await this.templatesRepository.findById(id);
     if (!existing || existing.userId !== userId) {
       throw new NotFoundException(`Workout template with id "${id}" not found`);
     }
@@ -92,36 +91,35 @@ export class WorkoutTemplatesService {
       }));
     }
 
-    const updated = this.templatesRepository.update(id, updateData);
+    const updated = await this.templatesRepository.update(id, updateData);
     return this.toTemplateResponseDto(updated!);
   }
 
-  delete(userId: string, id: string): void {
-    const existing = this.templatesRepository.findById(id);
+  async delete(userId: string, id: string): Promise<void> {
+    const existing = await this.templatesRepository.findById(id);
     if (!existing || existing.userId !== userId) {
       throw new NotFoundException(`Workout template with id "${id}" not found`);
     }
-    this.templatesRepository.delete(id);
+    await this.templatesRepository.delete(id);
   }
 
-  getSchedule(userId: string): ScheduledWorkoutResponseDto[] {
-    return this.scheduledRepository
-      .findByUserId(userId)
-      .map((s) => this.toScheduledResponseDto(s));
+  async getSchedule(userId: string): Promise<ScheduledWorkoutResponseDto[]> {
+    const scheduled = await this.scheduledRepository.findByUserId(userId);
+    return scheduled.map((s) => this.toScheduledResponseDto(s));
   }
 
-  scheduleWorkout(
+  async scheduleWorkout(
     userId: string,
     dto: ScheduleWorkoutDto,
-  ): ScheduledWorkoutResponseDto {
-    const template = this.templatesRepository.findById(dto.templateId);
+  ): Promise<ScheduledWorkoutResponseDto> {
+    const template = await this.templatesRepository.findById(dto.templateId);
     if (!template || template.userId !== userId) {
       throw new NotFoundException(
         `Workout template with id "${dto.templateId}" not found`,
       );
     }
 
-    const scheduled = this.scheduledRepository.create({
+    const scheduled = await this.scheduledRepository.create({
       templateId: dto.templateId,
       userId,
       dayOfWeek: dto.dayOfWeek,
@@ -130,12 +128,12 @@ export class WorkoutTemplatesService {
     return this.toScheduledResponseDto(scheduled);
   }
 
-  updateScheduledWorkout(
+  async updateScheduledWorkout(
     userId: string,
     scheduleId: string,
     dto: UpdateScheduledWorkoutDto,
-  ): ScheduledWorkoutResponseDto {
-    const existing = this.scheduledRepository.findById(scheduleId);
+  ): Promise<ScheduledWorkoutResponseDto> {
+    const existing = await this.scheduledRepository.findById(scheduleId);
     if (!existing || existing.userId !== userId) {
       throw new NotFoundException(
         `Scheduled workout with id "${scheduleId}" not found`,
@@ -143,7 +141,7 @@ export class WorkoutTemplatesService {
     }
 
     if (dto.templateId !== undefined) {
-      const template = this.templatesRepository.findById(dto.templateId);
+      const template = await this.templatesRepository.findById(dto.templateId);
       if (!template || template.userId !== userId) {
         throw new NotFoundException(
           `Workout template with id "${dto.templateId}" not found`,
@@ -158,18 +156,18 @@ export class WorkoutTemplatesService {
     if (dto.dayOfWeek !== undefined) updateData.dayOfWeek = dto.dayOfWeek;
     if (dto.time !== undefined) updateData.time = dto.time;
 
-    const updated = this.scheduledRepository.update(scheduleId, updateData);
+    const updated = await this.scheduledRepository.update(scheduleId, updateData);
     return this.toScheduledResponseDto(updated!);
   }
 
-  deleteScheduledWorkout(userId: string, scheduleId: string): void {
-    const existing = this.scheduledRepository.findById(scheduleId);
+  async deleteScheduledWorkout(userId: string, scheduleId: string): Promise<void> {
+    const existing = await this.scheduledRepository.findById(scheduleId);
     if (!existing || existing.userId !== userId) {
       throw new NotFoundException(
         `Scheduled workout with id "${scheduleId}" not found`,
       );
     }
-    this.scheduledRepository.delete(scheduleId);
+    await this.scheduledRepository.delete(scheduleId);
   }
 
   private toTemplateResponseDto(

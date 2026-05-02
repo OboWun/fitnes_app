@@ -29,9 +29,9 @@ export class ExercisesController {
     description: 'Paginated list of exercises',
   })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
-  findAll(
+  async findAll(
     @Query() query: ExerciseFilterQueryDto,
-  ): PaginatedExercisesResponseDto {
+  ): Promise<PaginatedExercisesResponseDto> {
     const {
       page = 1,
       limit = 20,
@@ -60,10 +60,10 @@ export class ExercisesController {
     description: 'Paginated list of similar exercises',
   })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
-  findSimilar(
+  async findSimilar(
     @Param('slug') slug: string,
     @Query() query: PaginationQueryDto,
-  ): PaginatedExercisesResponseDto {
+  ): Promise<PaginatedExercisesResponseDto> {
     const { page = 1, limit = 20 } = query;
     return this.exercisesService.findSimilar(slug, page, limit);
   }
@@ -80,10 +80,10 @@ export class ExercisesController {
     description: 'Paginated list of antagonist exercises',
   })
   @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
-  findAntagonist(
+  async findAntagonist(
     @Param('slug') slug: string,
     @Query() query: PaginationQueryDto,
-  ): PaginatedExercisesResponseDto {
+  ): Promise<PaginatedExercisesResponseDto> {
     const { page = 1, limit = 20 } = query;
     return this.exercisesService.findAntagonist(slug, page, limit);
   }

@@ -19,17 +19,17 @@ export interface IExercisesRepository {
     page: number,
     limit: number,
     filters?: ExerciseFilterParams,
-  ): PaginatedResult<Exercise>;
-  findBySlug(slug: string): Exercise | undefined;
+  ): Promise<PaginatedResult<Exercise>>;
+  findBySlug(slug: string): Promise<Exercise | undefined>;
   findSimilar(
     slug: string,
     page: number,
     limit: number,
-  ): PaginatedResult<Exercise>;
+  ): Promise<PaginatedResult<Exercise>>;
   findAntagonist(
     slug: string,
     antagonistMuscles: string[],
     page: number,
     limit: number,
-  ): PaginatedResult<Exercise>;
+  ): Promise<PaginatedResult<Exercise>>;
 }

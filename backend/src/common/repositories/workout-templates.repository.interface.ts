@@ -11,28 +11,28 @@ export const SCHEDULED_WORKOUTS_REPOSITORY = Symbol(
 );
 
 export interface IWorkoutTemplatesRepository {
-  findByUserId(userId: string): WorkoutTemplate[];
-  findById(id: string): WorkoutTemplate | undefined;
+  findByUserId(userId: string): Promise<WorkoutTemplate[]>;
+  findById(id: string): Promise<WorkoutTemplate | undefined>;
   create(
     data: Omit<WorkoutTemplate, 'id' | 'createdAt' | 'updatedAt'>,
-  ): WorkoutTemplate;
+  ): Promise<WorkoutTemplate>;
   update(
     id: string,
     data: Partial<
       Omit<WorkoutTemplate, 'id' | 'userId' | 'createdAt' | 'updatedAt'>
     >,
-  ): WorkoutTemplate | undefined;
-  delete(id: string): boolean;
+  ): Promise<WorkoutTemplate | undefined>;
+  delete(id: string): Promise<boolean>;
 }
 
 export interface IScheduledWorkoutsRepository {
-  findByUserId(userId: string): ScheduledWorkout[];
-  findById(id: string): ScheduledWorkout | undefined;
-  findByUserIdAndDay(userId: string, dayOfWeek: string): ScheduledWorkout[];
-  create(data: Omit<ScheduledWorkout, 'id' | 'createdAt'>): ScheduledWorkout;
+  findByUserId(userId: string): Promise<ScheduledWorkout[]>;
+  findById(id: string): Promise<ScheduledWorkout | undefined>;
+  findByUserIdAndDay(userId: string, dayOfWeek: string): Promise<ScheduledWorkout[]>;
+  create(data: Omit<ScheduledWorkout, 'id' | 'createdAt'>): Promise<ScheduledWorkout>;
   update(
     id: string,
     data: Partial<Omit<ScheduledWorkout, 'id' | 'userId' | 'createdAt'>>,
-  ): ScheduledWorkout | undefined;
-  delete(id: string): boolean;
+  ): Promise<ScheduledWorkout | undefined>;
+  delete(id: string): Promise<boolean>;
 }

@@ -10,7 +10,7 @@ export class BodypartsService {
     private readonly bodypartsRepository: IBodypartsRepository,
   ) {}
 
-  findAll(): Bodypart[] {
+  findAll(): Promise<Bodypart[]> {
     return this.bodypartsRepository.findAll();
   }
 }

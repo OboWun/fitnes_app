@@ -3,7 +3,6 @@ import { EXERCISES_REPOSITORY } from '../common/repositories/index.js';
 import type {
   IExercisesRepository,
   ExerciseFilterParams,
-  PaginatedResult,
 } from '../common/repositories/index.js';
 import { MUSCLES_REPOSITORY } from '../common/repositories/index.js';
 import type { IMusclesRepository } from '../common/repositories/index.js';
@@ -14,9 +13,16 @@ import type { IEquipmentsRepository } from '../common/repositories/index.js';
 import { PaginatedResponseDto } from '../common/dto/index.js';
 import type { Exercise } from '../entities/index.js';
 import type { ExerciseResponseDto } from './dto/exercise-response.dto.js';
+import type { Muscle } from '../entities/index.js';
+import type { Bodypart } from '../entities/index.js';
+import type { Equipment } from '../entities/index.js';
 
 @Injectable()
 export class ExercisesService {
+  private musclesCache: Muscle[] | null = null;
+  private bodypartsCache: Bodypart[] | null = null;
+  private equipmentsCache: Equipment[] | null = null;
+
   constructor(
     @Inject(EXERCISES_REPOSITORY)
     private readonly exercisesRepository: IExercisesRepository,
@@ -28,52 +34,52 @@ export class ExercisesService {
     private readonly equipmentsRepository: IEquipmentsRepository,
   ) {}
 
-  findAll(
+  async findAll(
     page: number,
     limit: number,
     filters: ExerciseFilterParams,
-  ): PaginatedResponseDto<ExerciseResponseDto> {
-    const result = this.exercisesRepository.findPaginated(page, limit, filters);
+  ): Promise<PaginatedResponseDto<ExerciseResponseDto>> {
+    const result = await this.exercisesRepository.findPaginated(page, limit, filters);
     return new PaginatedResponseDto(
-      result.data.map((e) => this.toResponseDto(e)),
+      await Promise.all(result.data.map((e) => this.toResponseDto(e))),
       result.total,
       page,
       limit,
     );
   }
 
-  findSimilar(
+  async findSimilar(
     slug: string,
     page: number,
     limit: number,
-  ): PaginatedResponseDto<ExerciseResponseDto> {
-    const exercise = this.exercisesRepository.findBySlug(slug);
+  ): Promise<PaginatedResponseDto<ExerciseResponseDto>> {
+    const exercise = await this.exercisesRepository.findBySlug(slug);
     if (!exercise) {
       throw new NotFoundException(`Exercise with slug "${slug}" not found`);
     }
 
-    const result = this.exercisesRepository.findSimilar(slug, page, limit);
+    const result = await this.exercisesRepository.findSimilar(slug, page, limit);
     return new PaginatedResponseDto(
-      result.data.map((e) => this.toResponseDto(e)),
+      await Promise.all(result.data.map((e) => this.toResponseDto(e))),
       result.total,
       page,
       limit,
     );
   }
 
-  findAntagonist(
+  async findAntagonist(
     slug: string,
     page: number,
     limit: number,
-  ): PaginatedResponseDto<ExerciseResponseDto> {
-    const exercise = this.exercisesRepository.findBySlug(slug);
+  ): Promise<PaginatedResponseDto<ExerciseResponseDto>> {
+    const exercise = await this.exercisesRepository.findBySlug(slug);
     if (!exercise) {
       throw new NotFoundException(`Exercise with slug "${slug}" not found`);
     }
 
     const antagonistSlugs: string[] = [];
     for (const muscleSlug of exercise.targetMuscles) {
-      const antagonists = this.musclesRepository.findAntagonists(muscleSlug);
+      const antagonists = await this.musclesRepository.findAntagonists(muscleSlug);
       for (const ant of antagonists) {
         if (!antagonistSlugs.includes(ant.slug)) {
           antagonistSlugs.push(ant.slug);
@@ -81,24 +87,40 @@ export class ExercisesService {
       }
     }
 
-    const result = this.exercisesRepository.findAntagonist(
+    const result = await this.exercisesRepository.findAntagonist(
       slug,
       antagonistSlugs,
       page,
       limit,
     );
     return new PaginatedResponseDto(
-      result.data.map((e) => this.toResponseDto(e)),
+      await Promise.all(result.data.map((e) => this.toResponseDto(e))),
       result.total,
       page,
       limit,
     );
   }
 
-  private toResponseDto(exercise: Exercise): ExerciseResponseDto {
-    const allMuscles = this.musclesRepository.findAll();
-    const allBodyparts = this.bodypartsRepository.findAll();
-    const allEquipments = this.equipmentsRepository.findAll();
+  private async ensureCache(): Promise<void> {
+    if (!this.musclesCache) {
+      this.musclesCache = await this.musclesRepository.findAll();
+    }
+    if (!this.bodypartsCache) {
+      this.bodypartsCache = await this.bodypartsRepository.findAll();
+    }
+    if (!this.equipmentsCache) {
+      this.equipmentsCache = await this.equipmentsRepository.findAll();
+    }
+  }
+
+  private resolveGifUrl(gifUrl: string): string {
+    if (gifUrl.startsWith('http')) return gifUrl;
+    const base = `${process.env.APP_URL ?? `http://localhost:${process.env.PORT ?? 3000}`}`;
+    return `${base}${gifUrl.startsWith('/') ? '' : '/'}${gifUrl}`;
+  }
+
+  private async toResponseDto(exercise: Exercise): Promise<ExerciseResponseDto> {
+    await this.ensureCache();
 
     return {
       exerciseId: exercise.exerciseId,
@@ -111,18 +133,18 @@ export class ExercisesService {
       movementPattern: exercise.movementPattern,
       variations: exercise.variations,
       slug: exercise.slug,
-      gifUrl: exercise.gifUrl,
+      gifUrl: this.resolveGifUrl(exercise.gifUrl),
       targetMuscles: exercise.targetMuscles
-        .map((slug) => allMuscles.find((m) => m.slug === slug))
+        .map((slug) => this.musclesCache!.find((m) => m.slug === slug))
         .filter((m): m is NonNullable<typeof m> => m != null),
       bodyParts: exercise.bodyParts
-        .map((slug) => allBodyparts.find((bp) => bp.slug === slug))
+        .map((slug) => this.bodypartsCache!.find((bp) => bp.slug === slug))
         .filter((bp): bp is NonNullable<typeof bp> => bp != null),
       equipments: exercise.equipments
-        .map((slug) => allEquipments.find((eq) => eq.slug === slug))
+        .map((slug) => this.equipmentsCache!.find((eq) => eq.slug === slug))
         .filter((eq): eq is NonNullable<typeof eq> => eq != null),
       secondaryMuscles: exercise.secondaryMuscles
-        ?.map((slug) => allMuscles.find((m) => m.slug === slug))
+        ?.map((slug) => this.musclesCache!.find((m) => m.slug === slug))
         .filter((m): m is NonNullable<typeof m> => m != null),
       instructions: exercise.instructions,
       contraindications: exercise.contraindications,

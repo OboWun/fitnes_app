@@ -32,11 +32,11 @@ export class UsersController {
     type: UserProfileResponseDto,
     description: 'Updated user profile',
   })
-  updateProfile(
+  async updateProfile(
     @CurrentUser() user: User,
     @Body() dto: UpdateProfileDto,
-  ): UserProfileResponseDto {
-    const updated = this.usersService.update(user.id, {
+  ): Promise<UserProfileResponseDto> {
+    const updated = await this.usersService.update(user.id, {
       ...(dto.name !== undefined && { name: dto.name }),
       ...(dto.weight !== undefined && { weight: dto.weight }),
       ...(dto.height !== undefined && { height: dto.height }),

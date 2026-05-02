@@ -15,8 +15,8 @@ export class AuthController {
     type: AuthResponseDto,
     description: 'JWT token and user info',
   })
-  authenticate(@Body() dto: DeviceAuthDto): AuthResponseDto {
-    const result = this.authService.authenticate(dto.deviceId);
+  async authenticate(@Body() dto: DeviceAuthDto): Promise<AuthResponseDto> {
+    const result = await this.authService.authenticate(dto.deviceId);
     return {
       accessToken: result.accessToken,
       user: {

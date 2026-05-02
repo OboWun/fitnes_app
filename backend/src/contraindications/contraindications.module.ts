@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ContraindicationsController } from './contraindications.controller.js';
 import { ContraindicationsService } from './contraindications.service.js';
-import { ContraindicationsJsonRepository } from './contraindications-json.repository.js';
+import { ContraindicationsSqlRepository } from './contraindications-sql.repository.js';
 import { CONTRAINDICATIONS_REPOSITORY } from '../common/repositories/index.js';
 
 @Module({
@@ -10,7 +10,7 @@ import { CONTRAINDICATIONS_REPOSITORY } from '../common/repositories/index.js';
     ContraindicationsService,
     {
       provide: CONTRAINDICATIONS_REPOSITORY,
-      useClass: ContraindicationsJsonRepository,
+      useClass: ContraindicationsSqlRepository,
     },
   ],
   exports: [ContraindicationsService],

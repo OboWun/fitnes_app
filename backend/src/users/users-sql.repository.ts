@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../common/database/database.service.js';
-import type { User } from '../entities/index.js';
+import type { User, UserMetadata } from '../entities/index.js';
 import type { IUsersRepository } from '../common/repositories/index.js';
 
 interface UserRow {
@@ -11,6 +11,7 @@ interface UserRow {
   height: number | null;
   age: number | null;
   created_at: Date;
+  metadata: UserMetadata | null;
 }
 
 function toUser(row: UserRow): User {
@@ -22,6 +23,7 @@ function toUser(row: UserRow): User {
     height: row.height != null ? Number(row.height) : undefined,
     age: row.age ?? undefined,
     createdAt: new Date(row.created_at).toISOString(),
+    metadata: row.metadata || undefined,
   };
 }
 
@@ -31,7 +33,7 @@ export class UsersSqlRepository implements IUsersRepository {
 
   async findByDeviceId(deviceId: string): Promise<User | undefined> {
     const row = await this.db.queryOne<UserRow>(
-      'SELECT id, device_id, name, weight, height, age, created_at FROM users WHERE device_id = $1',
+      'SELECT id, device_id, name, weight, height, age, created_at, metadata FROM users WHERE device_id = $1',
       [deviceId],
     );
     if (!row) return undefined;
@@ -42,7 +44,7 @@ export class UsersSqlRepository implements IUsersRepository {
 
   async findById(id: string): Promise<User | undefined> {
     const row = await this.db.queryOne<UserRow>(
-      'SELECT id, device_id, name, weight, height, age, created_at FROM users WHERE id = $1',
+      'SELECT id, device_id, name, weight, height, age, created_at, metadata FROM users WHERE id = $1',
       [id],
     );
     if (!row) return undefined;
@@ -57,7 +59,7 @@ export class UsersSqlRepository implements IUsersRepository {
     const row = await this.db.queryOne<UserRow>(
       `INSERT INTO users (id, device_id, created_at)
        VALUES ($1, $2, NOW())
-       RETURNING id, device_id, name, weight, height, age, created_at`,
+       RETURNING id, device_id, name, weight, height, age, created_at, metadata`,
       [id, deviceId],
     );
     return toUser(row!);
@@ -68,15 +70,15 @@ export class UsersSqlRepository implements IUsersRepository {
     data: Partial<Omit<User, 'id' | 'deviceId' | 'createdAt'>>,
   ): Promise<User | undefined> {
     const existing = await this.db.queryOne<UserRow>(
-      'SELECT id, device_id, name, weight, height, age, created_at FROM users WHERE id = $1',
+      'SELECT id, device_id, name, weight, height, age, created_at, metadata FROM users WHERE id = $1',
       [id],
     );
     if (!existing) return undefined;
 
     await this.db.transaction(async (client) => {
       await client.query(
-        `UPDATE users SET name = $2, weight = $3, height = $4, age = $5 WHERE id = $1`,
-        [id, data.name ?? null, data.weight ?? null, data.height ?? null, data.age ?? null],
+        `UPDATE users SET name = $2, weight = $3, height = $4, age = $5, metadata = COALESCE($6, metadata) WHERE id = $1`,
+        [id, data.name ?? null, data.weight ?? null, data.height ?? null, data.age ?? null, data.metadata ?? null],
       );
 
       if (data.contraindications !== undefined) {
@@ -98,7 +100,7 @@ export class UsersSqlRepository implements IUsersRepository {
     });
 
     const row = await this.db.queryOne<UserRow>(
-      'SELECT id, device_id, name, weight, height, age, created_at FROM users WHERE id = $1',
+      'SELECT id, device_id, name, weight, height, age, created_at, metadata FROM users WHERE id = $1',
       [id],
     );
     if (!row) return undefined;

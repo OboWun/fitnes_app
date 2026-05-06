@@ -1,0 +1,37 @@
+import type { DayOfWeek } from './workout-template.entity.js';
+
+export interface WorkoutSessionMetadata {
+  previousSessionId?: string;
+  nextSessionId?: string;
+  sessionDurationMin?: number;
+  sessionLoadByMuscle?: { slug: string; load: number }[];
+  mandatoryMuscles?: string[];
+  forbiddenExercises?: string[];
+  allowedTimeDeviationMin?: number;
+  allowedLoadDeviation?: number;
+}
+
+export interface WorkoutSession {
+  id: string;
+  blockId: string;
+  userId: string;
+  dayOfWeek: DayOfWeek;
+  time?: string;
+  status?: 'planned' | 'completed' | 'skipped' | 'replaced';
+  exercises?: WorkoutSessionExercise[];
+  metadata?: WorkoutSessionMetadata;
+}
+
+export interface WorkoutSessionExercise {
+  sessionId?: string;
+  exerciseSlug: string;
+  sets: number;
+  order: number;
+  metadata?: WorkoutSessionExerciseMetadata;
+}
+
+export interface WorkoutSessionExerciseMetadata {
+  targetLoad?: number;
+  setWeight?: number;
+}
+

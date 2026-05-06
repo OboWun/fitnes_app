@@ -10,6 +10,9 @@ import { ContraindicationsModule } from './contraindications/contraindications.m
 import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { WorkoutTemplatesModule } from './workout-templates/workout-templates.module.js';
+import { TrainingBlocksModule } from './training-blocks/training-blocks.module.js';
+import { WorkoutSessionsModule } from './workout-sessions/workout-sessions.module.js';
+import { WorkoutMilpModule } from './workout-milp/workout-milp.module.js';
 
 @Module({
   imports: [
@@ -22,6 +25,9 @@ import { WorkoutTemplatesModule } from './workout-templates/workout-templates.mo
     UsersModule,
     AuthModule,
     WorkoutTemplatesModule,
+    TrainingBlocksModule,
+    WorkoutSessionsModule,
+    WorkoutMilpModule,
   ],
   controllers: [AppController],
   providers: [AppService],

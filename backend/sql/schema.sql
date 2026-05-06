@@ -61,7 +61,8 @@ CREATE TABLE exercises (
   confidence NUMERIC(3,2),
   difficulty TEXT,
   movement_pattern TEXT,
-  variations TEXT[] DEFAULT '{}'
+  variations TEXT[] DEFAULT '{}',
+  metadata JSONB DEFAULT '{}'
 );
 
 CREATE TABLE exercise_target_muscles (
@@ -112,8 +113,13 @@ CREATE TABLE users (
   weight NUMERIC(5,1) CHECK (weight BETWEEN 20 AND 300),
   height NUMERIC(5,1) CHECK (height BETWEEN 50 AND 300),
   age INT CHECK (age BETWEEN 10 AND 120),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  metadata JSONB DEFAULT '{}'
 );
+
+-- migration: add metadata to exercises and users
+ALTER TABLE exercises ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
 
 CREATE TABLE user_contraindications (
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -153,6 +159,45 @@ CREATE TABLE scheduled_workouts (
 CREATE INDEX idx_we_template ON workout_exercises(template_id);
 CREATE INDEX idx_sw_user ON scheduled_workouts(user_id);
 CREATE INDEX idx_sw_template ON scheduled_workouts(template_id);
+
+CREATE TABLE training_blocks (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  type TEXT NOT NULL,
+  index INTEGER NOT NULL,
+  duration_weeks INTEGER NOT NULL DEFAULT 1,
+  goal TEXT,
+  target_muscles TEXT[],
+  metadata JSONB DEFAULT '{}'
+);
+
+CREATE TABLE workout_sessions (
+  id TEXT PRIMARY KEY,
+  block_id TEXT NOT NULL REFERENCES training_blocks(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day_of_week TEXT NOT NULL,
+  time TEXT,
+  status TEXT DEFAULT 'planned',
+  metadata JSONB DEFAULT '{}'
+);
+
+CREATE TABLE workout_session_exercises (
+  session_id TEXT NOT NULL REFERENCES workout_sessions(id) ON DELETE CASCADE,
+  exercise_slug TEXT NOT NULL,
+  sets INTEGER NOT NULL,
+  ordering INTEGER NOT NULL,
+  metadata JSONB DEFAULT '{}',
+  PRIMARY KEY (session_id, exercise_slug)
+);
+
+CREATE INDEX idx_tb_user ON training_blocks(user_id);
+CREATE INDEX idx_ws_block ON workout_sessions(block_id);
+CREATE INDEX idx_ws_user ON workout_sessions(user_id);
+CREATE INDEX idx_wse_session ON workout_session_exercises(session_id);
+
+-- migration: add metadata to workout_templates
+ALTER TABLE workout_templates ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
 
 CREATE OR REPLACE FUNCTION find_exercise_full_by_slug(p_slug TEXT)
 RETURNS JSONB AS $$

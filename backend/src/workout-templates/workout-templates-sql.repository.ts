@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../common/database/database.service.js';
 import type {
   WorkoutTemplate,
+  WorkoutTemplateMetadata,
   WorkoutExercise,
   ScheduledWorkout,
 } from '../entities/index.js';
@@ -22,10 +23,11 @@ export class WorkoutTemplatesSqlRepository
       user_id: string;
       name: string;
       description: string | null;
+      metadata: WorkoutTemplateMetadata | null;
       created_at: Date;
       updated_at: Date;
     }>(
-      'SELECT id, user_id, name, description, created_at, updated_at FROM workout_templates WHERE user_id = $1 ORDER BY created_at DESC',
+      'SELECT id, user_id, name, description, metadata, created_at, updated_at FROM workout_templates WHERE user_id = $1 ORDER BY created_at DESC',
       [userId],
     );
     return Promise.all(rows.map((r) => this.toTemplate(r)));
@@ -37,10 +39,11 @@ export class WorkoutTemplatesSqlRepository
       user_id: string;
       name: string;
       description: string | null;
+      metadata: WorkoutTemplateMetadata | null;
       created_at: Date;
       updated_at: Date;
     }>(
-      'SELECT id, user_id, name, description, created_at, updated_at FROM workout_templates WHERE id = $1',
+      'SELECT id, user_id, name, description, metadata, created_at, updated_at FROM workout_templates WHERE id = $1',
       [id],
     );
     if (!row) return undefined;
@@ -59,13 +62,14 @@ export class WorkoutTemplatesSqlRepository
         user_id: string;
         name: string;
         description: string | null;
+        metadata: WorkoutTemplateMetadata | null;
         created_at: Date;
         updated_at: Date;
       }>(
-        `INSERT INTO workout_templates (id, user_id, name, description)
-         VALUES ($1, $2, $3, $4)
-         RETURNING id, user_id, name, description, created_at, updated_at`,
-        [id, data.userId, data.name, data.description ?? null],
+        `INSERT INTO workout_templates (id, user_id, name, description, metadata)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, user_id, name, description, metadata, created_at, updated_at`,
+        [id, data.userId, data.name, data.description ?? null, data.metadata ? JSON.stringify(data.metadata) : null],
       );
 
       if (data.exercises?.length) {
@@ -103,8 +107,8 @@ export class WorkoutTemplatesSqlRepository
 
     await this.db.transaction(async (client) => {
       await client.query(
-        `UPDATE workout_templates SET name = COALESCE($2, name), description = COALESCE($3, description), updated_at = NOW() WHERE id = $1`,
-        [id, data.name ?? null, data.description ?? null],
+        `UPDATE workout_templates SET name = COALESCE($2, name), description = COALESCE($3, description), metadata = COALESCE($4, metadata), updated_at = NOW() WHERE id = $1`,
+        [id, data.name ?? null, data.description ?? null, (data as Record<string, unknown>).metadata ? JSON.stringify((data as Record<string, unknown>).metadata) : null],
       );
 
       if (data.exercises !== undefined) {
@@ -146,6 +150,7 @@ export class WorkoutTemplatesSqlRepository
     user_id: string;
     name: string;
     description: string | null;
+    metadata: WorkoutTemplateMetadata | null;
     created_at: Date;
     updated_at: Date;
   }): Promise<WorkoutTemplate> {
@@ -176,6 +181,7 @@ export class WorkoutTemplatesSqlRepository
       })),
       createdAt: new Date(row.created_at).toISOString(),
       updatedAt: new Date(row.updated_at).toISOString(),
+      metadata: row.metadata || undefined,
     };
   }
 }

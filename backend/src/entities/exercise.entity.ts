@@ -36,6 +36,18 @@ export type MovementPattern =
   | 'locomotion'
   | 'stretch';
 
+export interface ExerciseMetadata {
+  complexityScore?: number;
+  fatigueCost?: number;
+  timeCostSec?: number;
+  riskLevel?: number;
+  jointStress?: number;
+  primaryMuscleWeights?: { slug: string; weight: number }[];
+  secondaryMuscleWeights?: { slug: string; weight: number }[];
+  phaseAffinity?: string[];
+  variationGroup?: string;
+}
+
 export interface Exercise {
   exerciseId: string;
   name: string;
@@ -54,4 +66,5 @@ export interface Exercise {
   difficulty?: Difficulty;
   movementPattern?: MovementPattern;
   variations?: string[];
+  metadata?: ExerciseMetadata;
 }

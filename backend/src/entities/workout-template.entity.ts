@@ -16,12 +16,22 @@ export interface WorkoutExercise {
   order: number;
 }
 
+export interface WorkoutTemplateMetadata {
+  sessionDurationMin?: number;
+  trainingGoal?: string;
+  expectedLoad?: number;
+  recoveryWindowDays?: number;
+  blockType?: string;
+  phase?: string;
+}
+
 export interface WorkoutTemplate {
   id: string;
   userId: string;
   name: string;
   description?: string;
   exercises: WorkoutExercise[];
+  metadata?: WorkoutTemplateMetadata;
   createdAt: string;
   updatedAt: string;
 }

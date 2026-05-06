@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../common/database/database.service.js';
-import type { Exercise } from '../entities/index.js';
+import type { Exercise, ExerciseMetadata } from '../entities/index.js';
 import type {
   IExercisesRepository,
   ExerciseFilterParams,
   PaginatedResult,
+  ExerciseMILPData,
 } from '../common/repositories/index.js';
 
 interface ExerciseRow {
@@ -20,6 +21,7 @@ interface ExerciseRow {
   difficulty: string | null;
   movement_pattern: string | null;
   variations: string[] | null;
+  metadata: ExerciseMetadata | null;
 }
 
 @Injectable()
@@ -43,7 +45,7 @@ export class ExercisesSqlRepository implements IExercisesRepository {
     const rows = await this.db.query<ExerciseRow>(
       `SELECT e.exercise_id, e.name, e.slug, e.gif_url, e.instructions, e.alias,
               e.exercise_type, e.description, e.confidence, e.difficulty,
-              e.movement_pattern, e.variations
+              e.movement_pattern, e.variations, e.metadata
        FROM exercises e ${where}
        ORDER BY e.name
        LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
@@ -58,7 +60,7 @@ export class ExercisesSqlRepository implements IExercisesRepository {
     const row = await this.db.queryOne<ExerciseRow>(
       `SELECT exercise_id, name, slug, gif_url, instructions, alias,
               exercise_type, description, confidence, difficulty,
-              movement_pattern, variations
+              movement_pattern, variations, metadata
        FROM exercises WHERE slug = $1`,
       [slug],
     );
@@ -93,7 +95,7 @@ export class ExercisesSqlRepository implements IExercisesRepository {
     const rows = await this.db.query<ExerciseRow>(
       `SELECT e.exercise_id, e.name, e.slug, e.gif_url, e.instructions, e.alias,
               e.exercise_type, e.description, e.confidence, e.difficulty,
-              e.movement_pattern, e.variations
+              e.movement_pattern, e.variations, e.metadata
        FROM exercises e
        WHERE e.slug != $1
          AND EXISTS (
@@ -144,7 +146,7 @@ export class ExercisesSqlRepository implements IExercisesRepository {
     const rows = await this.db.query<ExerciseRow>(
       `SELECT e.exercise_id, e.name, e.slug, e.gif_url, e.instructions, e.alias,
               e.exercise_type, e.description, e.confidence, e.difficulty,
-              e.movement_pattern, e.variations
+              e.movement_pattern, e.variations, e.metadata
        FROM exercises e
        WHERE e.slug != $1
          AND EXISTS (
@@ -264,6 +266,7 @@ export class ExercisesSqlRepository implements IExercisesRepository {
       difficulty: (row.difficulty as Exercise['difficulty']) || undefined,
       movementPattern: (row.movement_pattern as Exercise['movementPattern']) || undefined,
       variations: row.variations || undefined,
+      metadata: row.metadata || undefined,
     };
   }
 
@@ -294,5 +297,64 @@ export class ExercisesSqlRepository implements IExercisesRepository {
        WHERE ec.exercise_id = (SELECT id FROM exercises WHERE slug = $1)`,
       [slug],
     );
+  }
+
+  async findForMILP(page: number, limit: number): Promise<PaginatedResult<ExerciseMILPData>> {
+    const offset = (page - 1) * limit;
+
+    const countRow = await this.db.queryOne<{ total: string }>(
+      `SELECT COUNT(*)::text AS total FROM exercises`,
+      [],
+    );
+    const total = parseInt(countRow?.total ?? '0', 10);
+
+    interface MILPRow {
+      slug: string;
+      exercise_type: string | null;
+      movement_pattern: string | null;
+      metadata: ExerciseMetadata | null;
+      equipments: { slug: string }[];
+      contraindications: { slug: string; severity: string }[];
+    }
+
+    const rows = await this.db.query<MILPRow>(
+      `SELECT 
+         e.slug,
+         e.exercise_type,
+         e.movement_pattern,
+         e.metadata,
+         COALESCE(
+           (SELECT json_agg(json_build_object('slug', eq.slug))
+            FROM exercise_equipments ee
+            JOIN equipments eq ON eq.id = ee.equipment_id
+            WHERE ee.exercise_id = e.id),
+           '[]'::json
+         ) as equipments,
+         COALESCE(
+           (SELECT json_agg(json_build_object('slug', c.slug, 'severity', ec.severity))
+            FROM exercise_contraindications ec
+            JOIN contraindications c ON c.id = ec.contraindication_id
+            WHERE ec.exercise_id = e.id),
+           '[]'::json
+         ) as contraindications
+       FROM exercises e
+       ORDER BY e.slug
+       LIMIT $1 OFFSET $2`,
+      [limit, offset],
+    );
+
+    const data: ExerciseMILPData[] = rows.map((r) => ({
+      slug: r.slug,
+      exerciseType: r.exercise_type,
+      movementPattern: r.movement_pattern,
+      metadata: r.metadata,
+      equipments: r.equipments.map((e) => e.slug),
+      contraindications: r.contraindications.map((c) => ({
+        slug: c.slug,
+        severity: c.severity,
+      })),
+    }));
+
+    return { data, total };
   }
 }

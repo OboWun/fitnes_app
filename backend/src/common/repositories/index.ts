@@ -15,6 +15,7 @@ export {
   type IExercisesRepository,
   type ExerciseFilterParams,
   type PaginatedResult,
+  type ExerciseMILPData,
 } from './exercises.repository.interface.js';
 export {
   USERS_REPOSITORY,
@@ -30,3 +31,11 @@ export {
   type IWorkoutTemplatesRepository,
   type IScheduledWorkoutsRepository,
 } from './workout-templates.repository.interface.js';
+export {
+  TRAINING_BLOCKS_REPOSITORY,
+  type ITrainingBlocksRepository,
+} from './training-blocks.repository.interface.js';
+export {
+  WORKOUT_SESSIONS_REPOSITORY,
+  type IWorkoutSessionsRepository,
+} from './workout-sessions.repository.interface.js';

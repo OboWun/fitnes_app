@@ -49,16 +49,16 @@ npm run start:dev    # development (watch mode)
 npm run start:prod   # production
 ```
 
-Swagger-документация: `http://localhost:3000/api/docs`
+Swagger-документация: `http://localhost:3001/api/docs`
 
 ## Переменные окружения
 
 | Переменная | Описание | По умолчанию |
 |---|---|---|
 | `DATABASE_URL` | Connection string PostgreSQL | — |
-| `PORT` | Порт сервера | `3000` |
+| `PORT` | Порт сервера | `3001` |
 | `JWT_SECRET` | Секрет для JWT-токенов | hardcoded fallback |
-| `APP_URL` | Базовый URL для генерации gifUrl | `http://localhost:3000` |
+| `APP_URL` | Базовый URL для генерации gifUrl | `http://localhost:3001` |
 
 ## Скрипты
 

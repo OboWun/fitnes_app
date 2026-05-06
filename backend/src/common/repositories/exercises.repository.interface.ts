@@ -1,4 +1,4 @@
-import type { Exercise } from '../../entities/index.js';
+import type { Exercise, ExerciseMetadata } from '../../entities/index.js';
 
 export const EXERCISES_REPOSITORY = Symbol('EXERCISES_REPOSITORY');
 
@@ -12,6 +12,15 @@ export interface ExerciseFilterParams {
 export interface PaginatedResult<T> {
   data: T[];
   total: number;
+}
+
+export interface ExerciseMILPData {
+  slug: string;
+  exerciseType: string | null;
+  movementPattern: string | null;
+  equipments: string[];
+  contraindications: { slug: string; severity: string }[];
+  metadata: ExerciseMetadata | null;
 }
 
 export interface IExercisesRepository {
@@ -32,4 +41,5 @@ export interface IExercisesRepository {
     page: number,
     limit: number,
   ): Promise<PaginatedResult<Exercise>>;
+  findForMILP(page: number, limit: number): Promise<PaginatedResult<ExerciseMILPData>>;
 }

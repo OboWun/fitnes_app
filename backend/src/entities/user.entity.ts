@@ -1,3 +1,16 @@
+export interface UserMetadata {
+  goal?: string | null;
+  trainingAgeMonths?: number | null;
+  experienceLevel?: string | null;
+  recoveryCapacity?: number | null;
+  availableEquipment?: string[] | null;
+  injuryHistory?: string[] | null;
+  currentLimitations?: string[] | null;
+  preferredExercises?: string[] | null;
+  dislikedExercises?: string[] | null;
+  preferredMovementPatterns?: string[] | null;
+}
+
 export interface User {
   id: string;
   deviceId: string;
@@ -7,4 +20,5 @@ export interface User {
   age?: number;
   contraindications?: string[];
   createdAt: string;
+  metadata?: UserMetadata;
 }

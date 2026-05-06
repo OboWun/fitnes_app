@@ -3,6 +3,7 @@ import { ContraindicationSeverityResponseDto } from './contraindication-severity
 import { EquipmentResponseDto } from '../../equipments/dto/equipment-response.dto.js';
 import { MuscleResponseDto } from '../../muscles/dto/muscle-response.dto.js';
 import { BodypartResponseDto } from '../../bodyparts/dto/bodypart-response.dto.js';
+import type { ExerciseMetadata } from '../../entities/index.js';
 
 export class ExerciseResponseDto {
   @ApiProperty({
@@ -155,4 +156,17 @@ export class ExerciseResponseDto {
     description: 'Contraindications',
   })
   contraindications?: ContraindicationSeverityResponseDto[];
+
+  @ApiPropertyOptional({
+    description: 'MILP metadata coefficients',
+    example: {
+      complexityScore: 0.5,
+      fatigueCost: 7,
+      timeCostSec: 300,
+      riskLevel: 0.3,
+      jointStress: 3,
+      variationGroup: 'push-chest',
+    },
+  })
+  metadata?: ExerciseMetadata;
 }

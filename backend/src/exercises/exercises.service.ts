@@ -148,6 +148,7 @@ export class ExercisesService {
         .filter((m): m is NonNullable<typeof m> => m != null),
       instructions: exercise.instructions,
       contraindications: exercise.contraindications,
+      metadata: exercise.metadata,
     };
   }
 }

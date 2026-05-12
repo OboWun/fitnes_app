@@ -14,5 +14,15 @@ export type {
   ScheduledWorkout,
   DayOfWeek,
 } from './workout-template.entity.js';
-export type { TrainingBlock, TrainingBlockMetadata } from './training-block.entity.js';
-export type { WorkoutSession, WorkoutSessionMetadata, WorkoutSessionExercise, WorkoutSessionExerciseMetadata } from './workout-session.entity.js';
+export type {
+  TrainingBlock,
+  TrainingBlockMetadata,
+} from './training-block.entity.js';
+export type {
+  WorkoutSession,
+  WorkoutSessionMetadata,
+  WorkoutSessionExercise,
+  WorkoutSessionExerciseMetadata,
+} from './workout-session.entity.js';
+export type { WorkoutDialog } from './workout-dialog.entity.js';
+export type { EquipmentPreset } from './equipment-preset.entity.js';

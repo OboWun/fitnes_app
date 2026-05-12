@@ -1,5 +1,15 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsArray, IsIn, ValidateNested, Min, Max } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsArray,
+  IsIn,
+  ValidateNested,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class SessionExerciseDto {
@@ -64,10 +74,29 @@ export class CreateWorkoutSessionDto {
   @IsString()
   blockId!: string;
 
-  @ApiProperty({ example: 'monday', enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] })
+  @ApiProperty({
+    example: 'monday',
+    enum: [
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+      'sunday',
+    ],
+  })
   @IsNotEmpty()
   @IsString()
-  @IsIn(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])
+  @IsIn([
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
+  ])
   dayOfWeek!: string;
 
   @ApiPropertyOptional({ example: '09:00' })
@@ -75,7 +104,9 @@ export class CreateWorkoutSessionDto {
   @IsString()
   time?: string;
 
-  @ApiPropertyOptional({ enum: ['planned', 'completed', 'skipped', 'replaced'] })
+  @ApiPropertyOptional({
+    enum: ['planned', 'completed', 'skipped', 'replaced'],
+  })
   @IsOptional()
   @IsString()
   @IsIn(['planned', 'completed', 'skipped', 'replaced'])

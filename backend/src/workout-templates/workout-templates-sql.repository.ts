@@ -12,9 +12,7 @@ import type {
 } from '../common/repositories/index.js';
 
 @Injectable()
-export class WorkoutTemplatesSqlRepository
-  implements IWorkoutTemplatesRepository
-{
+export class WorkoutTemplatesSqlRepository implements IWorkoutTemplatesRepository {
   constructor(private readonly db: DatabaseService) {}
 
   async findByUserId(userId: string): Promise<WorkoutTemplate[]> {
@@ -69,7 +67,13 @@ export class WorkoutTemplatesSqlRepository
         `INSERT INTO workout_templates (id, user_id, name, description, metadata)
          VALUES ($1, $2, $3, $4, $5)
          RETURNING id, user_id, name, description, metadata, created_at, updated_at`,
-        [id, data.userId, data.name, data.description ?? null, data.metadata ? JSON.stringify(data.metadata) : null],
+        [
+          id,
+          data.userId,
+          data.name,
+          data.description ?? null,
+          data.metadata ? JSON.stringify(data.metadata) : null,
+        ],
       );
 
       if (data.exercises?.length) {
@@ -108,7 +112,14 @@ export class WorkoutTemplatesSqlRepository
     await this.db.transaction(async (client) => {
       await client.query(
         `UPDATE workout_templates SET name = COALESCE($2, name), description = COALESCE($3, description), metadata = COALESCE($4, metadata), updated_at = NOW() WHERE id = $1`,
-        [id, data.name ?? null, data.description ?? null, (data as Record<string, unknown>).metadata ? JSON.stringify((data as Record<string, unknown>).metadata) : null],
+        [
+          id,
+          data.name ?? null,
+          data.description ?? null,
+          (data as Record<string, unknown>).metadata
+            ? JSON.stringify((data as Record<string, unknown>).metadata)
+            : null,
+        ],
       );
 
       if (data.exercises !== undefined) {
@@ -187,9 +198,7 @@ export class WorkoutTemplatesSqlRepository
 }
 
 @Injectable()
-export class ScheduledWorkoutsSqlRepository
-  implements IScheduledWorkoutsRepository
-{
+export class ScheduledWorkoutsSqlRepository implements IScheduledWorkoutsRepository {
   constructor(private readonly db: DatabaseService) {}
 
   async findByUserId(userId: string): Promise<ScheduledWorkout[]> {

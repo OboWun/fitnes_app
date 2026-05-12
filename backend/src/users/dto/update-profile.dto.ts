@@ -4,16 +4,27 @@ import {
   IsNumber,
   IsArray,
   IsOptional,
+  IsEnum,
   Min,
   Max,
   IsInt,
 } from 'class-validator';
+
+export enum Gender {
+  MALE = 'male',
+  FEMALE = 'female',
+}
 
 export class UpdateProfileDto {
   @ApiPropertyOptional({ example: 'Иван', description: 'User name' })
   @IsOptional()
   @IsString()
   name?: string;
+
+  @ApiPropertyOptional({ example: 'male', enum: Gender, description: 'Gender' })
+  @IsOptional()
+  @IsEnum(Gender)
+  gender?: Gender;
 
   @ApiPropertyOptional({ example: 75, description: 'Weight in kg' })
   @IsOptional()
@@ -45,4 +56,38 @@ export class UpdateProfileDto {
   @IsArray()
   @IsString({ each: true })
   contraindications?: string[];
+
+  @ApiPropertyOptional({
+    example: 'hypertrophy',
+    description: 'Training goal (stored in user.metadata)',
+  })
+  @IsOptional()
+  @IsString()
+  goal?: string;
+
+  @ApiPropertyOptional({
+    example: 'intermediate',
+    description: 'Experience level (stored in user.metadata)',
+  })
+  @IsOptional()
+  @IsString()
+  experienceLevel?: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['barbell', 'dumbbell'],
+    description: 'Available equipment slugs (stored in user.metadata)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  availableEquipment?: string[];
+
+  @ApiPropertyOptional({
+    example: 'preset-gym-full',
+    description: 'Default equipment preset ID (stored in user.metadata)',
+  })
+  @IsOptional()
+  @IsString()
+  defaultEquipmentPresetId?: string;
 }

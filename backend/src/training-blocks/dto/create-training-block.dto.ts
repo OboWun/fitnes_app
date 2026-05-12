@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, IsOptional, IsNumber, IsArray, Min, Max, IsIn } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsNumber,
+  IsArray,
+  Min,
+  Max,
+  IsIn,
+} from 'class-validator';
 
 export class TrainingBlockMetadataDto {
   @ApiPropertyOptional({ example: 'accumulation' })
@@ -39,7 +48,10 @@ export class CreateTrainingBlockDto {
   @IsString()
   name!: string;
 
-  @ApiProperty({ example: 'base', enum: ['base', 'build', 'taper', 'recovery'] })
+  @ApiProperty({
+    example: 'base',
+    enum: ['base', 'build', 'taper', 'recovery'],
+  })
   @IsNotEmpty()
   @IsString()
   @IsIn(['base', 'build', 'taper', 'recovery'])

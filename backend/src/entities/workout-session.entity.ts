@@ -4,6 +4,8 @@ export interface WorkoutSessionMetadata {
   previousSessionId?: string;
   nextSessionId?: string;
   sessionDurationMin?: number;
+  sessionType?: string;
+  repsPerSet?: number;
   sessionLoadByMuscle?: { slug: string; load: number }[];
   mandatoryMuscles?: string[];
   forbiddenExercises?: string[];
@@ -34,4 +36,3 @@ export interface WorkoutSessionExerciseMetadata {
   targetLoad?: number;
   setWeight?: number;
 }
-

@@ -38,7 +38,7 @@ export class TrainingBlocksService {
       durationWeeks: dto.durationWeeks,
       goal: dto.goal,
       targetMuscles: dto.targetMuscles,
-      metadata: dto.metadata as TrainingBlock['metadata'],
+      metadata: dto.metadata,
     });
     return this.toResponseDto(block);
   }
@@ -57,10 +57,12 @@ export class TrainingBlocksService {
     if (dto.name !== undefined) updateData.name = dto.name;
     if (dto.type !== undefined) updateData.type = dto.type;
     if (dto.index !== undefined) updateData.index = dto.index;
-    if (dto.durationWeeks !== undefined) updateData.durationWeeks = dto.durationWeeks;
+    if (dto.durationWeeks !== undefined)
+      updateData.durationWeeks = dto.durationWeeks;
     if (dto.goal !== undefined) updateData.goal = dto.goal;
-    if (dto.targetMuscles !== undefined) updateData.targetMuscles = dto.targetMuscles;
-    if (dto.metadata !== undefined) updateData.metadata = dto.metadata as TrainingBlock['metadata'];
+    if (dto.targetMuscles !== undefined)
+      updateData.targetMuscles = dto.targetMuscles;
+    if (dto.metadata !== undefined) updateData.metadata = dto.metadata;
 
     const updated = await this.repository.update(id, updateData);
     return this.toResponseDto(updated!);

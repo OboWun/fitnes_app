@@ -41,5 +41,8 @@ export interface IExercisesRepository {
     page: number,
     limit: number,
   ): Promise<PaginatedResult<Exercise>>;
-  findForMILP(page: number, limit: number): Promise<PaginatedResult<ExerciseMILPData>>;
+  findForMILP(
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<ExerciseMILPData>>;
 }

@@ -38,14 +38,18 @@ export class WorkoutSessionsController {
   @ApiOperation({ summary: 'Get all sessions for a training block' })
   @ApiParam({ name: 'blockId' })
   @ApiOkResponse({ type: [WorkoutSessionResponseDto] })
-  async findByBlockId(@Param('blockId') blockId: string): Promise<WorkoutSessionResponseDto[]> {
+  async findByBlockId(
+    @Param('blockId') blockId: string,
+  ): Promise<WorkoutSessionResponseDto[]> {
     return this.service.findByBlockId(blockId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all workout sessions for current user' })
   @ApiOkResponse({ type: [WorkoutSessionResponseDto] })
-  async findAll(@CurrentUser() user: User): Promise<WorkoutSessionResponseDto[]> {
+  async findAll(
+    @CurrentUser() user: User,
+  ): Promise<WorkoutSessionResponseDto[]> {
     return this.service.findByUserId(user.id);
   }
 
@@ -88,7 +92,10 @@ export class WorkoutSessionsController {
   @ApiOperation({ summary: 'Delete a workout session' })
   @ApiParam({ name: 'id' })
   @ApiNoContentResponse()
-  async delete(@CurrentUser() user: User, @Param('id') id: string): Promise<void> {
+  async delete(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+  ): Promise<void> {
     await this.service.delete(user.id, id);
   }
 }

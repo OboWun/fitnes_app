@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../common/database/database.service.js';
-import type { TrainingBlock, TrainingBlockMetadata } from '../entities/index.js';
+import type {
+  TrainingBlock,
+  TrainingBlockMetadata,
+} from '../entities/index.js';
 import type { ITrainingBlocksRepository } from '../common/repositories/index.js';
 
 interface TrainingBlockRow {

@@ -24,7 +24,10 @@ interface SessionExerciseRow {
   metadata: Record<string, unknown> | null;
 }
 
-function toSession(row: WorkoutSessionRow, exercises: WorkoutSessionExercise[] = []): WorkoutSession {
+function toSession(
+  row: WorkoutSessionRow,
+  exercises: WorkoutSessionExercise[] = [],
+): WorkoutSession {
   return {
     id: row.id,
     blockId: row.block_id,
@@ -93,7 +96,13 @@ export class WorkoutSessionsSqlRepository implements IWorkoutSessionsRepository 
           await client.query(
             `INSERT INTO workout_session_exercises (session_id, exercise_slug, sets, ordering, metadata)
              VALUES ($1, $2, $3, $4, $5)`,
-            [id, ex.exerciseSlug, ex.sets, ex.order, ex.metadata ? JSON.stringify(ex.metadata) : null],
+            [
+              id,
+              ex.exerciseSlug,
+              ex.sets,
+              ex.order,
+              ex.metadata ? JSON.stringify(ex.metadata) : null,
+            ],
           );
         }
       }
@@ -106,7 +115,9 @@ export class WorkoutSessionsSqlRepository implements IWorkoutSessionsRepository 
 
   async update(
     id: string,
-    data: Partial<Omit<WorkoutSession, 'id' | 'userId' | 'blockId'>> & { exercises?: WorkoutSessionExercise[] },
+    data: Partial<Omit<WorkoutSession, 'id' | 'userId' | 'blockId'>> & {
+      exercises?: WorkoutSessionExercise[];
+    },
   ): Promise<WorkoutSession | undefined> {
     const existing = await this.findById(id);
     if (!existing) return undefined;
@@ -132,7 +143,13 @@ export class WorkoutSessionsSqlRepository implements IWorkoutSessionsRepository 
           await client.query(
             `INSERT INTO workout_session_exercises (session_id, exercise_slug, sets, ordering, metadata)
              VALUES ($1, $2, $3, $4, $5)`,
-            [id, ex.exerciseSlug, ex.sets, ex.order, ex.metadata ? JSON.stringify(ex.metadata) : null],
+            [
+              id,
+              ex.exerciseSlug,
+              ex.sets,
+              ex.order,
+              ex.metadata ? JSON.stringify(ex.metadata) : null,
+            ],
           );
         }
       }
@@ -149,7 +166,10 @@ export class WorkoutSessionsSqlRepository implements IWorkoutSessionsRepository 
     return (result as unknown as { rowCount: number }).rowCount > 0;
   }
 
-  async findRecentCompletedByUserId(userId: string, _daysBack: number): Promise<WorkoutSession[]> {
+  async findRecentCompletedByUserId(
+    userId: string,
+    _daysBack: number,
+  ): Promise<WorkoutSession[]> {
     const rows = await this.db.query<WorkoutSessionRow>(
       `SELECT id, block_id, user_id, day_of_week, time, status, metadata
        FROM workout_sessions
@@ -162,7 +182,9 @@ export class WorkoutSessionsSqlRepository implements IWorkoutSessionsRepository 
     return Promise.all(rows.map((r) => this.toSessionWithExercises(r)));
   }
 
-  private async loadExercises(sessionId: string): Promise<WorkoutSessionExercise[]> {
+  private async loadExercises(
+    sessionId: string,
+  ): Promise<WorkoutSessionExercise[]> {
     const rows = await this.db.query<SessionExerciseRow>(
       'SELECT exercise_slug, sets, ordering, metadata FROM workout_session_exercises WHERE session_id = $1 ORDER BY ordering',
       [sessionId],
@@ -172,11 +194,13 @@ export class WorkoutSessionsSqlRepository implements IWorkoutSessionsRepository 
       exerciseSlug: r.exercise_slug,
       sets: r.sets,
       order: r.ordering,
-      metadata: r.metadata as WorkoutSessionExercise['metadata'] || undefined,
+      metadata: (r.metadata as WorkoutSessionExercise['metadata']) || undefined,
     }));
   }
 
-  private async toSessionWithExercises(row: WorkoutSessionRow): Promise<WorkoutSession> {
+  private async toSessionWithExercises(
+    row: WorkoutSessionRow,
+  ): Promise<WorkoutSession> {
     const exercises = await this.loadExercises(row.id);
     return toSession(row, exercises);
   }

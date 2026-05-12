@@ -1,5 +1,40 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
+class UserMetadataDto {
+  @ApiPropertyOptional({ example: 'hypertrophy' })
+  goal?: string;
+
+  @ApiPropertyOptional({ example: 'intermediate' })
+  experienceLevel?: string;
+
+  @ApiPropertyOptional({ type: [String], example: ['barbell', 'dumbbell'] })
+  availableEquipment?: string[];
+
+  @ApiPropertyOptional({ example: 24 })
+  trainingAgeMonths?: number;
+
+  @ApiPropertyOptional({ example: 7 })
+  recoveryCapacity?: number;
+
+  @ApiPropertyOptional({ type: [String] })
+  injuryHistory?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  currentLimitations?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  preferredExercises?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  dislikedExercises?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  preferredMovementPatterns?: string[];
+
+  @ApiPropertyOptional({ example: 'preset-gym-full' })
+  defaultEquipmentPresetId?: string;
+}
+
 export class UserProfileResponseDto {
   @ApiProperty({ example: 'l1a2b3c', description: 'User ID' })
   id: string;
@@ -9,6 +44,9 @@ export class UserProfileResponseDto {
 
   @ApiPropertyOptional({ example: 'Иван', description: 'User name' })
   name?: string;
+
+  @ApiPropertyOptional({ example: 'male', description: 'Gender' })
+  gender?: string;
 
   @ApiPropertyOptional({ example: 75, description: 'Weight in kg' })
   weight?: number;
@@ -31,4 +69,7 @@ export class UserProfileResponseDto {
     description: 'Account creation date',
   })
   createdAt: string;
+
+  @ApiPropertyOptional({ type: UserMetadataDto, description: 'User metadata' })
+  metadata?: UserMetadataDto;
 }

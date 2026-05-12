@@ -47,7 +47,9 @@ export class WorkoutTemplatesController {
     type: [WorkoutTemplateResponseDto],
     description: 'List of workout templates',
   })
-  async findAll(@CurrentUser() user: User): Promise<WorkoutTemplateResponseDto[]> {
+  async findAll(
+    @CurrentUser() user: User,
+  ): Promise<WorkoutTemplateResponseDto[]> {
     return this.workoutTemplatesService.findAll(user.id);
   }
 
@@ -99,7 +101,10 @@ export class WorkoutTemplatesController {
   @ApiOperation({ summary: 'Delete a workout template' })
   @ApiParam({ name: 'id', description: 'Template ID' })
   @ApiNoContentResponse({ description: 'Template deleted' })
-  async delete(@CurrentUser() user: User, @Param('id') id: string): Promise<void> {
+  async delete(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+  ): Promise<void> {
     await this.workoutTemplatesService.delete(user.id, id);
   }
 
@@ -111,7 +116,9 @@ export class WorkoutTemplatesController {
     type: [ScheduledWorkoutResponseDto],
     description: 'List of scheduled workouts',
   })
-  async getSchedule(@CurrentUser() user: User): Promise<ScheduledWorkoutResponseDto[]> {
+  async getSchedule(
+    @CurrentUser() user: User,
+  ): Promise<ScheduledWorkoutResponseDto[]> {
     return this.workoutTemplatesService.getSchedule(user.id);
   }
 
@@ -159,6 +166,9 @@ export class WorkoutTemplatesController {
     @CurrentUser() user: User,
     @Param('scheduleId') scheduleId: string,
   ): Promise<void> {
-    await this.workoutTemplatesService.deleteScheduledWorkout(user.id, scheduleId);
+    await this.workoutTemplatesService.deleteScheduledWorkout(
+      user.id,
+      scheduleId,
+    );
   }
 }

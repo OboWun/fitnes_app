@@ -16,7 +16,7 @@
 ### Переменные решения
 
 - `x_e ∈ {0,1}` — выбрано ли упражнение `e`
-- `a_e ∈ {1..6}` — количество подходов упражнения `e`
+- `s_e ∈ {2..5}` — количество подходов упражнения `e` (variable: compound = `compoundSets`, isolation = `isolationSets`)
 - `y_t,d ∈ {0,1}` — назначена ли тренировка `t` на день `d`
 - `z_t,e ∈ {0,1}` — входит ли упражнение `e` в тренировку `t`
 
@@ -36,7 +36,14 @@
 | `difficulty(e)` | `Exercise.difficulty` + маппинг: beginner=1, intermediate=2, advanced=3 |
 | `recoveryCapacity(u)` | `User.metadata.recoveryCapacity` | 0..1, дефолт 0.5 |
 | `goal(u)` | `User.metadata.goal` | цель, дефолт general_fitness |
-| `sessionDurationMin` | `WorkoutTemplate.metadata.sessionDurationMin` | лимит времени, 20..120 |
+| `sessionDurationMin` | входной параметр запроса | лимит времени, 20..120 |
+| `goal` | входной параметр запроса | цель: strength, hypertrophy, endurance и т.д. |
+| `experienceLevel` | входной параметр запроса | beginner, intermediate, advanced |
+| `gender` | `User.gender` | male, female — влияет на веса выбора упражнений |
+| `compoundSets` | auto-derived из level + goal | подходы для compound-упражнений (3-5) |
+| `isolationSets` | auto-derived из level + goal | подходы для isolation-упражнений (2-3) |
+| `repsPerSet` | auto-derived из goal | повторения: strength=5, hypertrophy=10, endurance=15 |
+| `weeklyVolumeByMuscle` | вычисляется из последних 7 дней | накопленный недельный объём по мышцам |
 | `minRestDays` | `TrainingBlock.metadata.minRestDays` | мин отдых, дефолт 1 |
 | `maxRestDays` | `TrainingBlock.metadata.maxRestDays` | макс отдых, дефолт 3 |
 | `weeklyLoadLimit` | `TrainingBlock.metadata.weeklyLoadLimit` | лимит нагрузки |
@@ -153,9 +160,9 @@ x_e = 0  если ∃ c ∈ contraindications(e) ∩ userContraindications : sev
 Упражнения с forbidden-противопоказанием исключаются.
 
 ```
-Σ_{e∈E} x_e * timeCostSec(e) <= sessionDurationMin * 60
+Σ_{e∈E} x_e * timeCostSec(e) * s_e <= sessionDurationMin * 60
 ```
-Суммарное время не превышает лимит.
+Суммарное время не превышает лимит. `s_e` = `compoundSets` для compound, `isolationSets` для isolation.
 
 ```
 Σ_{e∈E} x_e * I(e,m) <= fatigueLimit(m)  для m ∈ M
@@ -239,7 +246,7 @@ consecutiveTrainingDays <= consecutiveLimit
 После каждой тренировки `t` усталость обновляется:
 
 ```
-F_m(t+1) = F_m(t) * exp(-lambda * restDays) + Σ_{e∈E_t} I(e,m) * a_e
+F_m(t+1) = F_m(t) * exp(-lambda * restDays) + Σ_{e∈E_t} I(e,m) * s_e
 ```
 
 Где:
@@ -247,7 +254,7 @@ F_m(t+1) = F_m(t) * exp(-lambda * restDays) + Σ_{e∈E_t} I(e,m) * a_e
 - `lambda = 0.345` (prior)
 - `restDays` — количество дней отдыха с предыдущей тренировки
 - `I(e,m)` — нагрузка упражнения `e` на мышцу `m`
-- `a_e` — количество подходов
+- `s_e` — количество подходов (variable: compound или isolation)
 
 ### 3.4 Прогрессия внутри недели
 

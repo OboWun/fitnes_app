@@ -1,6 +1,11 @@
-import type { WorkoutSession, WorkoutSessionExercise } from '../../entities/index.js';
+import type {
+  WorkoutSession,
+  WorkoutSessionExercise,
+} from '../../entities/index.js';
 
-export const WORKOUT_SESSIONS_REPOSITORY = Symbol('WORKOUT_SESSIONS_REPOSITORY');
+export const WORKOUT_SESSIONS_REPOSITORY = Symbol(
+  'WORKOUT_SESSIONS_REPOSITORY',
+);
 
 export interface IWorkoutSessionsRepository {
   findByBlockId(blockId: string): Promise<WorkoutSession[]>;
@@ -11,8 +16,13 @@ export interface IWorkoutSessionsRepository {
   ): Promise<WorkoutSession>;
   update(
     id: string,
-    data: Partial<Omit<WorkoutSession, 'id' | 'userId' | 'blockId'>> & { exercises?: WorkoutSessionExercise[] },
+    data: Partial<Omit<WorkoutSession, 'id' | 'userId' | 'blockId'>> & {
+      exercises?: WorkoutSessionExercise[];
+    },
   ): Promise<WorkoutSession | undefined>;
   delete(id: string): Promise<boolean>;
-  findRecentCompletedByUserId(userId: string, daysBack: number): Promise<WorkoutSession[]>;
+  findRecentCompletedByUserId(
+    userId: string,
+    daysBack: number,
+  ): Promise<WorkoutSession[]>;
 }

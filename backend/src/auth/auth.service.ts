@@ -10,7 +10,9 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async authenticate(deviceId: string): Promise<{ accessToken: string; user: User }> {
+  async authenticate(
+    deviceId: string,
+  ): Promise<{ accessToken: string; user: User }> {
     let user = await this.usersService.findByDeviceId(deviceId);
     if (!user) {
       user = await this.usersService.create(deviceId);

@@ -1,13 +1,37 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsOptional, IsString, IsIn, IsArray, ValidateNested } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsIn,
+  IsArray,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { SessionExerciseDto } from './create-workout-session.dto.js';
 
 export class UpdateWorkoutSessionDto {
-  @ApiPropertyOptional({ enum: ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] })
+  @ApiPropertyOptional({
+    enum: [
+      'monday',
+      'tuesday',
+      'wednesday',
+      'thursday',
+      'friday',
+      'saturday',
+      'sunday',
+    ],
+  })
   @IsOptional()
   @IsString()
-  @IsIn(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'])
+  @IsIn([
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday',
+    'sunday',
+  ])
   dayOfWeek?: string;
 
   @ApiPropertyOptional({ example: '10:00' })
@@ -15,7 +39,9 @@ export class UpdateWorkoutSessionDto {
   @IsString()
   time?: string;
 
-  @ApiPropertyOptional({ enum: ['planned', 'completed', 'skipped', 'replaced'] })
+  @ApiPropertyOptional({
+    enum: ['planned', 'completed', 'skipped', 'replaced'],
+  })
   @IsOptional()
   @IsString()
   @IsIn(['planned', 'completed', 'skipped', 'replaced'])

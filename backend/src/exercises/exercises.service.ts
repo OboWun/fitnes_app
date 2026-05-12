@@ -39,7 +39,11 @@ export class ExercisesService {
     limit: number,
     filters: ExerciseFilterParams,
   ): Promise<PaginatedResponseDto<ExerciseResponseDto>> {
-    const result = await this.exercisesRepository.findPaginated(page, limit, filters);
+    const result = await this.exercisesRepository.findPaginated(
+      page,
+      limit,
+      filters,
+    );
     return new PaginatedResponseDto(
       await Promise.all(result.data.map((e) => this.toResponseDto(e))),
       result.total,
@@ -58,7 +62,11 @@ export class ExercisesService {
       throw new NotFoundException(`Exercise with slug "${slug}" not found`);
     }
 
-    const result = await this.exercisesRepository.findSimilar(slug, page, limit);
+    const result = await this.exercisesRepository.findSimilar(
+      slug,
+      page,
+      limit,
+    );
     return new PaginatedResponseDto(
       await Promise.all(result.data.map((e) => this.toResponseDto(e))),
       result.total,
@@ -79,7 +87,8 @@ export class ExercisesService {
 
     const antagonistSlugs: string[] = [];
     for (const muscleSlug of exercise.targetMuscles) {
-      const antagonists = await this.musclesRepository.findAntagonists(muscleSlug);
+      const antagonists =
+        await this.musclesRepository.findAntagonists(muscleSlug);
       for (const ant of antagonists) {
         if (!antagonistSlugs.includes(ant.slug)) {
           antagonistSlugs.push(ant.slug);
@@ -119,7 +128,9 @@ export class ExercisesService {
     return `${base}${gifUrl.startsWith('/') ? '' : '/'}${gifUrl}`;
   }
 
-  private async toResponseDto(exercise: Exercise): Promise<ExerciseResponseDto> {
+  private async toResponseDto(
+    exercise: Exercise,
+  ): Promise<ExerciseResponseDto> {
     await this.ensureCache();
 
     return {

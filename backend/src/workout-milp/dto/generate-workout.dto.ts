@@ -1,5 +1,29 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNumber, IsOptional, IsArray, IsString, Min, Max } from 'class-validator';
+import {
+  IsNumber,
+  IsOptional,
+  IsArray,
+  IsString,
+  IsEnum,
+  Min,
+  Max,
+} from 'class-validator';
+
+export enum ExperienceLevel {
+  BEGINNER = 'beginner',
+  INTERMEDIATE = 'intermediate',
+  ADVANCED = 'advanced',
+}
+
+export enum TrainingGoal {
+  STRENGTH = 'strength',
+  HYPERTROPHY = 'hypertrophy',
+  ENDURANCE = 'endurance',
+  WEIGHT_LOSS = 'weight_loss',
+  GENERAL_HEALTH = 'general_health',
+  REHAB = 'rehab',
+  MOBILITY = 'mobility',
+}
 
 export class GenerateWorkoutDto {
   @ApiProperty({ example: 60, minimum: 20, maximum: 120 })
@@ -8,24 +32,37 @@ export class GenerateWorkoutDto {
   @Max(120)
   sessionDurationMin!: number;
 
-  @ApiProperty({ example: 5, minimum: 3, maximum: 8 })
-  @IsNumber()
-  @Min(3)
-  @Max(8)
-  exerciseCount!: number;
-
-  @ApiProperty({ example: 3, minimum: 1, maximum: 6 })
-  @IsNumber()
-  @Min(1)
-  @Max(6)
-  setsPerExercise!: number;
-
-  @ApiPropertyOptional({ example: 90, description: 'Rest time between sets in seconds', minimum: 30, maximum: 300 })
+  @ApiPropertyOptional({ example: 'intermediate', enum: ExperienceLevel })
   @IsOptional()
-  @IsNumber()
-  @Min(30)
-  @Max(300)
-  restBetweenSetsSec?: number;
+  @IsEnum(ExperienceLevel)
+  experienceLevel?: ExperienceLevel;
+
+  @ApiPropertyOptional({ example: 'hypertrophy', enum: TrainingGoal })
+  @IsOptional()
+  @IsEnum(TrainingGoal)
+  goal?: TrainingGoal;
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['chest', 'back', 'arms'],
+    description:
+      'Abstract muscle groups to focus on (hard coverage constraint)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  focusMuscles?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
+    example: ['upper_chest', 'lats', 'rear_delts'],
+    description:
+      'Specific muscles to prioritize within groups (strong bonus + hard constraint)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  specificMuscles?: string[];
 
   @ApiPropertyOptional({ type: [String], example: ['barbell', 'dumbbell'] })
   @IsOptional()
@@ -33,14 +70,16 @@ export class GenerateWorkoutDto {
   @IsString({ each: true })
   availableEquipment?: string[];
 
+  @ApiPropertyOptional({
+    example: 'preset-gym-full',
+    description: 'Equipment preset ID — overrides availableEquipment',
+  })
+  @IsOptional()
+  @IsString()
+  equipmentPresetId?: string;
+
   @ApiPropertyOptional({ example: 'accumulation' })
   @IsOptional()
   @IsString()
   phase?: string;
-
-  @ApiPropertyOptional({ type: [String], example: ['chest', 'back'] })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  mandatoryMuscles?: string[];
 }

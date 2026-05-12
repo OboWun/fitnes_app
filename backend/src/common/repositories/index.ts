@@ -39,3 +39,11 @@ export {
   WORKOUT_SESSIONS_REPOSITORY,
   type IWorkoutSessionsRepository,
 } from './workout-sessions.repository.interface.js';
+export {
+  WORKOUT_DIALOGS_REPOSITORY,
+  type IWorkoutDialogsRepository,
+} from './workout-dialogs.repository.interface.js';
+export {
+  EQUIPMENT_PRESETS_REPOSITORY,
+  type IEquipmentPresetsRepository,
+} from './equipment-presets.repository.interface.js';

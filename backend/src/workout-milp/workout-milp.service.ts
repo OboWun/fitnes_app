@@ -1,7 +1,15 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { EXERCISES_REPOSITORY, WORKOUT_SESSIONS_REPOSITORY } from '../common/repositories/index.js';
-import type { IExercisesRepository, IWorkoutSessionsRepository, ExerciseMILPData } from '../common/repositories/index.js';
-import type { ExerciseMetadata, WorkoutSession } from '../entities/index.js';
+import {
+  EXERCISES_REPOSITORY,
+  WORKOUT_SESSIONS_REPOSITORY,
+} from '../common/repositories/index.js';
+import type {
+  IExercisesRepository,
+  IWorkoutSessionsRepository,
+  ExerciseMILPData,
+} from '../common/repositories/index.js';
+import type { ExerciseMetadata } from '../entities/index.js';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore - javascript-lp-solver has no types
 import solver from 'javascript-lp-solver';
 
@@ -16,14 +24,31 @@ const FATIGUE_LIMIT = 3.0;
 const DEFAULT_PHASE = 'accumulation';
 const DIVERSITY_WINDOW = 4;
 
-type SessionType = 'upper' | 'lower' | 'full_body' | 'push' | 'pull' | 'cardio' | 'mobility' | 'general';
+type SessionType =
+  | 'upper'
+  | 'lower'
+  | 'full_body'
+  | 'push'
+  | 'pull'
+  | 'cardio'
+  | 'mobility'
+  | 'general';
 
 const SESSION_TARGETS: Record<SessionType, string[]> = {
   upper: ['chest', 'back', 'shoulders', 'lats', 'upper_back', 'traps'],
   push: ['chest', 'shoulders', 'triceps'],
   pull: ['back', 'lats', 'upper_back', 'traps', 'biceps'],
   lower: ['quads', 'hamstrings', 'glutes', 'calves'],
-  full_body: ['chest', 'back', 'shoulders', 'quads', 'hamstrings', 'glutes', 'lats', 'upper_back'],
+  full_body: [
+    'chest',
+    'back',
+    'shoulders',
+    'quads',
+    'hamstrings',
+    'glutes',
+    'lats',
+    'upper_back',
+  ],
   cardio: [],
   mobility: [],
   general: [],
@@ -38,6 +63,191 @@ const SESSION_DEPRIORITIZE: Record<SessionType, string[]> = {
   cardio: [],
   mobility: [],
   general: [],
+};
+
+const MUSCLE_HIERARCHY: Record<string, { slug: string; priority: number }[]> = {
+  arms: [
+    { slug: 'biceps', priority: 0.9 },
+    { slug: 'triceps', priority: 0.9 },
+    { slug: 'shoulders', priority: 0.6 },
+    { slug: 'side_delts', priority: 0.5 },
+    { slug: 'forearms', priority: 0.3 },
+  ],
+  legs: [
+    { slug: 'quads', priority: 0.9 },
+    { slug: 'hamstrings', priority: 0.8 },
+    { slug: 'glutes', priority: 0.7 },
+    { slug: 'calves', priority: 0.4 },
+    { slug: 'adductors', priority: 0.3 },
+    { slug: 'abductors', priority: 0.3 },
+  ],
+  back: [
+    { slug: 'lats', priority: 0.9 },
+    { slug: 'upper_back', priority: 0.8 },
+    { slug: 'traps', priority: 0.5 },
+    { slug: 'rhomboids', priority: 0.4 },
+    { slug: 'rear_delts', priority: 0.3 },
+    { slug: 'lower_back', priority: 0.3 },
+  ],
+  chest: [{ slug: 'chest', priority: 1.0 }],
+  shoulders: [
+    { slug: 'side_delts', priority: 0.8 },
+    { slug: 'shoulders', priority: 0.7 },
+    { slug: 'front_delts', priority: 0.6 },
+    { slug: 'rear_delts', priority: 0.5 },
+  ],
+  core: [
+    { slug: 'abs', priority: 0.8 },
+    { slug: 'obliques', priority: 0.4 },
+    { slug: 'lower_back', priority: 0.3 },
+  ],
+};
+
+const EXPERIENCE_PRESETS: Record<
+  string,
+  {
+    exerciseCount: number;
+    setsPerExercise: number;
+    restBetweenSetsSec: number;
+    weeklyVolumeScale: number;
+  }
+> = {
+  beginner: {
+    exerciseCount: 4,
+    setsPerExercise: 3,
+    restBetweenSetsSec: 120,
+    weeklyVolumeScale: 0.6,
+  },
+  intermediate: {
+    exerciseCount: 5,
+    setsPerExercise: 3,
+    restBetweenSetsSec: 90,
+    weeklyVolumeScale: 1.0,
+  },
+  advanced: {
+    exerciseCount: 6,
+    setsPerExercise: 4,
+    restBetweenSetsSec: 60,
+    weeklyVolumeScale: 1.4,
+  },
+};
+
+const SETS_BY_ROLE: Record<string, { compound: number; isolation: number }> = {
+  beginner: { compound: 3, isolation: 2 },
+  intermediate: { compound: 4, isolation: 3 },
+  advanced: { compound: 4, isolation: 3 },
+};
+
+const SETS_GOAL_MODIFIER: Record<
+  string,
+  { compound: number; isolation: number }
+> = {
+  strength: { compound: 1, isolation: 0 },
+  hypertrophy: { compound: 0, isolation: 1 },
+  endurance: { compound: 0, isolation: 1 },
+  weight_loss: { compound: 0, isolation: 0 },
+  general_health: { compound: 0, isolation: 0 },
+  rehab: { compound: -1, isolation: 0 },
+  mobility: { compound: -1, isolation: 0 },
+};
+
+const GOAL_REP_RANGES: Record<
+  string,
+  { min: number; max: number; default: number }
+> = {
+  strength: { min: 1, max: 5, default: 5 },
+  hypertrophy: { min: 6, max: 12, default: 10 },
+  endurance: { min: 15, max: 25, default: 15 },
+  weight_loss: { min: 10, max: 15, default: 12 },
+  general_health: { min: 8, max: 15, default: 10 },
+  rehab: { min: 12, max: 20, default: 15 },
+  mobility: { min: 10, max: 20, default: 15 },
+};
+
+const GOAL_CONFIG: Record<
+  string,
+  {
+    setsMultiplier: number;
+    restSec: number;
+    preferCompound: boolean;
+    exerciseTypeBonus: string[];
+    exerciseTypePenalty: string[];
+  }
+> = {
+  strength: {
+    setsMultiplier: 1.0,
+    restSec: 180,
+    preferCompound: true,
+    exerciseTypeBonus: ['strength', 'plyometric'],
+    exerciseTypePenalty: ['stretching', 'mobility', 'cardio'],
+  },
+  hypertrophy: {
+    setsMultiplier: 1.25,
+    restSec: 90,
+    preferCompound: true,
+    exerciseTypeBonus: ['hypertrophy', 'strength'],
+    exerciseTypePenalty: ['stretching', 'mobility', 'cardio'],
+  },
+  endurance: {
+    setsMultiplier: 1.5,
+    restSec: 45,
+    preferCompound: false,
+    exerciseTypeBonus: ['endurance', 'cardio'],
+    exerciseTypePenalty: ['strength', 'plyometric'],
+  },
+  weight_loss: {
+    setsMultiplier: 1.25,
+    restSec: 60,
+    preferCompound: true,
+    exerciseTypeBonus: ['cardio', 'endurance'],
+    exerciseTypePenalty: ['strength', 'plyometric'],
+  },
+  general_health: {
+    setsMultiplier: 1.0,
+    restSec: 90,
+    preferCompound: false,
+    exerciseTypeBonus: ['hypertrophy', 'endurance'],
+    exerciseTypePenalty: [],
+  },
+  rehab: {
+    setsMultiplier: 0.75,
+    restSec: 120,
+    preferCompound: false,
+    exerciseTypeBonus: ['rehab', 'mobility', 'stability'],
+    exerciseTypePenalty: ['plyometric', 'strength'],
+  },
+  mobility: {
+    setsMultiplier: 0.75,
+    restSec: 45,
+    preferCompound: false,
+    exerciseTypeBonus: ['mobility', 'stretching', 'stability'],
+    exerciseTypePenalty: ['plyometric', 'strength'],
+  },
+};
+
+const MUSCLE_WEEKLY_VOLUME_TARGETS: Record<
+  string,
+  { min: number; max: number }
+> = {
+  quads: { min: 12, max: 18 },
+  glutes: { min: 14, max: 20 },
+  hamstrings: { min: 10, max: 14 },
+  lats: { min: 12, max: 16 },
+  upper_back: { min: 8, max: 12 },
+  traps: { min: 6, max: 10 },
+  chest: { min: 12, max: 16 },
+  shoulders: { min: 8, max: 12 },
+  side_delts: { min: 6, max: 10 },
+  front_delts: { min: 4, max: 8 },
+  rear_delts: { min: 6, max: 10 },
+  biceps: { min: 8, max: 12 },
+  triceps: { min: 10, max: 14 },
+  forearms: { min: 4, max: 8 },
+  calves: { min: 8, max: 12 },
+  abs: { min: 6, max: 10 },
+  obliques: { min: 4, max: 6 },
+  lower_back: { min: 4, max: 8 },
+  adductors: { min: 4, max: 8 },
 };
 
 const MUSCLE_NORMALIZATION: Record<string, string> = {
@@ -123,7 +333,14 @@ const MUSCLE_NORMALIZATION: Record<string, string> = {
 };
 
 const MUSCLE_GROUPS: Record<string, string[]> = {
-  back: ['lats', 'upper_back', 'traps', 'rhomboids', 'rear_delts', 'lower_back'],
+  back: [
+    'lats',
+    'upper_back',
+    'traps',
+    'rhomboids',
+    'rear_delts',
+    'lower_back',
+  ],
   chest: ['chest', 'pecs', 'pectorals'],
   shoulders: ['front_delts', 'side_delts', 'rear_delts', 'shoulders'],
   legs: ['quads', 'hamstrings', 'glutes', 'calves', 'adductors', 'abductors'],
@@ -147,26 +364,68 @@ const SEVERITY_MAP: Record<string, number> = {
 };
 
 const DEFAULT_PER_SET_TIME_SEC = 40;
-const DEFAULT_REST_BETWEEN_SETS_SEC = 90;
+
+const FOCUS_GROUP_MIN_EXERCISES: Record<string, number> = {
+  chest: 2,
+  back: 2,
+  legs: 2,
+  shoulders: 1,
+  arms: 1,
+  core: 1,
+};
 
 export interface WorkoutMILPInput {
   userId: string;
   sessionDurationMin: number;
-  exerciseCount: number;
-  setsPerExercise: number;
+  experienceLevel?: string;
+  goal?: string;
+  focusMuscles?: string[];
+  specificMuscles?: string[];
+  exerciseCount?: number;
+  setsPerExercise?: number;
   restBetweenSetsSec?: number;
+  compoundSets?: number;
+  isolationSets?: number;
   availableEquipment: string[];
   phase?: string;
   fatigueByMuscle: Record<string, number>;
   usedExercises: string[];
   mandatoryMuscles?: string[];
   userContraindications?: string[];
+  gender?: string;
+  weeklyVolumeByMuscle?: Record<string, number>;
+}
+
+interface NormalizedWorkoutMILPInput {
+  userId: string;
+  sessionDurationMin: number;
+  exerciseCount: number;
+  setsPerExercise: number;
+  compoundSets: number;
+  isolationSets: number;
+  restBetweenSetsSec: number;
+  repsPerSet: number;
+  experienceLevel: string;
+  goal: string;
+  gender: string;
+  focusMuscles: string[];
+  specificMuscles: string[];
+  focusGroupMinimums: Record<string, number>;
+  availableEquipment: string[];
+  phase: string;
+  fatigueByMuscle: Record<string, number>;
+  usedExercises: string[];
+  mandatoryMuscles: string[];
+  userContraindications: string[];
+  weeklyVolumeByMuscle: Record<string, number>;
+  weeklyVolumeScale: number;
 }
 
 export interface WorkoutMILPOutput {
   exercises: {
     exerciseSlug: string;
     sets: number;
+    repsPerSet: number;
     order: number;
   }[];
   totalLoadByMuscle: Record<string, number>;
@@ -192,20 +451,30 @@ export class WorkoutMilpService {
 
     const candidates = this.filterCandidates(allExercises, normalizedInput);
 
-    const coverageCheck = this.checkCoverageFeasibility(candidates, normalizedInput);
+    const coverageCheck = this.checkCoverageFeasibility(
+      candidates,
+      normalizedInput,
+    );
 
     if (candidates.length < normalizedInput.exerciseCount) {
       return this.fallbackSelection(candidates, normalizedInput, coverageCheck);
     }
 
-    // 3. Calculate weights for each candidate
     const weights = this.calculateWeights(candidates, normalizedInput);
 
-    // 4. Build and solve LP
-    const selected = this.solveLP(candidates, weights, normalizedInput, coverageCheck);
+    const { selected, usedFallback: lpUsedFallback } = this.solveLP(
+      candidates,
+      weights,
+      normalizedInput,
+      coverageCheck,
+    );
 
-    // 5. Build output
-    return this.buildOutput(selected, normalizedInput, coverageCheck);
+    return this.buildOutput(
+      selected,
+      normalizedInput,
+      coverageCheck,
+      lpUsedFallback,
+    );
   }
 
   private async loadAllExercises(): Promise<ExerciseMILPData[]> {
@@ -215,14 +484,20 @@ export class WorkoutMilpService {
 
   private filterCandidates(
     exercises: ExerciseMILPData[],
-    input: WorkoutMILPInput,
+    input: NormalizedWorkoutMILPInput,
   ): ExerciseMILPData[] {
     const normalizeEquipment = (slug: string): string =>
       slug.toLowerCase().replace(/[-_\s]/g, '');
 
     const isBodyweightEquipment = (slug: string): boolean => {
       const normalized = normalizeEquipment(slug);
-      return ['bodyweight', 'bodyweight', 'bodyweight', 'none', 'body'].includes(normalized);
+      return [
+        'bodyweight',
+        'bodyweight',
+        'bodyweight',
+        'none',
+        'body',
+      ].includes(normalized);
     };
 
     return exercises.filter((ex) => {
@@ -282,22 +557,36 @@ export class WorkoutMilpService {
 
   private calculateWeights(
     candidates: ExerciseMILPData[],
-    input: WorkoutMILPInput,
+    input: NormalizedWorkoutMILPInput,
   ): Map<string, number> {
     const weights = new Map<string, number>();
-    const phase = input.phase ?? DEFAULT_PHASE;
+    const phase = input.phase;
     const phaseLevel = PHASE_LEVEL[phase] ?? 1;
-    const sessionType = this.detectSessionType(input.mandatoryMuscles ?? []);
+    const sessionType = this.detectSessionType(input.mandatoryMuscles);
     const sessionTargets = SESSION_TARGETS[sessionType] ?? [];
     const sessionAvoid = SESSION_DEPRIORITIZE[sessionType] ?? [];
+    const goalCfg = GOAL_CONFIG[input.goal] ?? GOAL_CONFIG.general_health;
+
+    const specificSet = new Set(input.specificMuscles);
+    const allFocusMuscles = new Set([
+      ...input.focusMuscles,
+      ...input.specificMuscles,
+    ]);
+    for (const focus of input.focusMuscles) {
+      const hierarchy = MUSCLE_HIERARCHY[focus];
+      if (hierarchy) {
+        for (const child of hierarchy) {
+          allFocusMuscles.add(child.slug);
+        }
+      }
+    }
 
     for (const ex of candidates) {
       const meta = ex.metadata ?? {};
 
-      // w_data = (1 + α1*f_complexity) * (1 + α2*f_frequency) * (1 + α3*f_affinity)
       const complexity = meta.complexityScore ?? 0.5;
       const fComplexity = 1 / (1 + Math.abs(complexity * 3 - phaseLevel));
-      const fFrequency = 0.5; // no history yet
+      const fFrequency = 0.5;
       const fAffinity = meta.phaseAffinity?.includes(phase) ? 1 : 0;
 
       const wData =
@@ -305,12 +594,15 @@ export class WorkoutMilpService {
         (1 + ALPHA_2 * fFrequency) *
         (1 + ALPHA_3 * fAffinity);
 
-      // Diversity: V_e (graded on recent use count within a short window)
-      const recentHits = input.usedExercises.filter((slug) => slug === ex.slug).length;
-      const diversityScore = Math.min(1, Math.max(0.2, 1 - recentHits / DIVERSITY_WINDOW));
+      const recentHits = input.usedExercises.filter(
+        (slug) => slug === ex.slug,
+      ).length;
+      const diversityScore = Math.min(
+        1,
+        Math.max(0.2, 1 - recentHits / DIVERSITY_WINDOW),
+      );
       const vE = diversityScore;
 
-      // Fatigue penalty: P_e
       let pE = 0;
       const muscleWeights = [
         ...(meta.primaryMuscleWeights ?? []),
@@ -324,7 +616,6 @@ export class WorkoutMilpService {
       }
       pE = Math.min(1, pE);
 
-      // w_e = w_data * (1 + δ*V_e) * (1 - ε*P_e)
       let wE = wData * (1 + DELTA * vE) * (1 - EPSILON * pE);
 
       // Session-aware boosts
@@ -333,32 +624,122 @@ export class WorkoutMilpService {
         sessionTargets.includes(this.normalizeSlug(mw.slug)),
       );
       if (coversTarget) {
-        wE *= 1.2; // soft bonus for session targets
+        wE *= 1.2;
       }
 
-      // Prefer compound exercises in strength sessions
+      // Compound bonus — stronger for strength/hypertrophy goals
       if (primaryMuscleCount > 1) {
-        wE *= 1 + Math.min(0.25, (primaryMuscleCount - 1) * 0.05);
+        const compoundBonus = goalCfg.preferCompound ? 0.1 : 0.05;
+        wE *= 1 + Math.min(0.35, (primaryMuscleCount - 1) * compoundBonus);
       }
 
-      // Deprioritize stretching/mobility for strength-ish sessions (upper/lower/push/pull/full_body)
+      // Deprioritize stretching/mobility for strength-ish sessions
       const exType = (ex.exerciseType ?? '').toLowerCase();
-      const isStretchLike = exType === 'stretching' || ex.movementPattern === 'stretch' || sessionAvoid.includes(exType);
-      if (sessionType !== 'cardio' && sessionType !== 'mobility' && isStretchLike) {
+      const isStretchLike =
+        exType === 'stretching' ||
+        ex.movementPattern === 'stretch' ||
+        sessionAvoid.includes(exType);
+      if (
+        sessionType !== 'cardio' &&
+        sessionType !== 'mobility' &&
+        isStretchLike
+      ) {
         wE *= 0.4;
       } else if (sessionAvoid.includes(exType)) {
         wE *= 0.7;
       }
 
-      // Mild reward for using more of the time budget (avoid ultra-short sets dominating)
-      const sets = input.setsPerExercise;
-      const restSec = input.restBetweenSetsSec ?? DEFAULT_REST_BETWEEN_SETS_SEC;
+      // Goal exercise type bonus/penalty
+      if (goalCfg.exerciseTypeBonus.includes(exType)) {
+        wE *= 1.3;
+      }
+      if (goalCfg.exerciseTypePenalty.includes(exType)) {
+        wE *= 0.5;
+      }
+
+      // Focus muscle bonus — soft boost for exercises hitting focus group muscles
+      const hitsFocus = (meta.primaryMuscleWeights ?? []).some((mw) =>
+        allFocusMuscles.has(this.normalizeSlug(mw.slug)),
+      );
+      if (hitsFocus) {
+        wE *= 1.3;
+      }
+
+      // Specific muscle bonus — stronger boost for precisely targeted muscles
+      const hitsSpecific = (meta.primaryMuscleWeights ?? []).some((mw) =>
+        specificSet.has(this.normalizeSlug(mw.slug)),
+      );
+      if (hitsSpecific) {
+        wE *= 1.5;
+      }
+
+      // Goal-specific intensity preference
+      if (input.goal === 'strength' && (meta.fatigueCost ?? 5) >= 7) {
+        wE *= 1.15;
+      }
+      if (input.goal === 'endurance' && (meta.fatigueCost ?? 5) <= 4) {
+        wE *= 1.1;
+      }
+
+      // Weekly volume awareness: muscles already at/above weekly max get deprioritized
+      const scale = input.weeklyVolumeScale;
+      for (const mw of meta.primaryMuscleWeights ?? []) {
+        const slug = this.normalizeSlug(mw.slug);
+        const weeklyDone = input.weeklyVolumeByMuscle[slug] ?? 0;
+        const target = MUSCLE_WEEKLY_VOLUME_TARGETS[slug];
+        if (target) {
+          const scaledMax = target.max * scale;
+          const scaledMin = target.min * scale;
+          if (weeklyDone >= scaledMax) {
+            wE *= 0.3;
+          } else if (weeklyDone < scaledMin * 0.5) {
+            wE *= 1.3;
+          }
+        }
+      }
+
+      // Gender-aware muscle preference
+      if (input.gender === 'female') {
+        const femaleLowerMuscles = new Set([
+          'glutes',
+          'hamstrings',
+          'adductors',
+          'abductors',
+        ]);
+        const hitsFemaleLower = (meta.primaryMuscleWeights ?? []).some((mw) =>
+          femaleLowerMuscles.has(this.normalizeSlug(mw.slug)),
+        );
+        if (hitsFemaleLower) {
+          wE *= 1.3;
+        }
+      } else if (input.gender === 'male') {
+        const maleUpperMuscles = new Set([
+          'chest',
+          'shoulders',
+          'side_delts',
+          'lats',
+        ]);
+        const hitsMaleUpper = (meta.primaryMuscleWeights ?? []).some((mw) =>
+          maleUpperMuscles.has(this.normalizeSlug(mw.slug)),
+        );
+        if (hitsMaleUpper) {
+          wE *= 1.2;
+        }
+      }
+
+      const sets = this.isCompoundExercise(ex)
+        ? input.compoundSets
+        : input.isolationSets;
+      const restSec = input.restBetweenSetsSec;
       const totalTime = this.calculateExerciseTime(meta, sets, restSec);
-      const timeUtilFactor = Math.min(1, totalTime / (input.sessionDurationMin * 60));
+      const timeUtilFactor = Math.min(
+        1,
+        totalTime / (input.sessionDurationMin * 60),
+      );
       wE *= 0.9 + 0.1 * timeUtilFactor;
 
-      // Contra penalty (soft: not_recommended, low_weight)
-      if (input.userContraindications?.length && ex.contraindications?.length) {
+      // Contra penalty
+      if (input.userContraindications.length && ex.contraindications?.length) {
         for (const c of ex.contraindications) {
           if (
             input.userContraindications.includes(c.slug) &&
@@ -369,7 +750,6 @@ export class WorkoutMilpService {
         }
       }
 
-      // Risk penalty
       wE -= meta.riskLevel ?? 0;
 
       weights.set(ex.slug, Math.max(0.01, wE));
@@ -378,45 +758,157 @@ export class WorkoutMilpService {
     return weights;
   }
 
-  private normalizeInput(input: WorkoutMILPInput): WorkoutMILPInput {
-    const normMandatory = (input.mandatoryMuscles ?? []).map((m) => this.normalizeSlug(m));
+  private normalizeInput(input: WorkoutMILPInput): NormalizedWorkoutMILPInput {
+    const level = input.experienceLevel ?? 'intermediate';
+    const goal = input.goal ?? 'general_health';
+    const gender = input.gender ?? 'male';
+    const preset = EXPERIENCE_PRESETS[level] ?? EXPERIENCE_PRESETS.intermediate;
+    const goalCfg = GOAL_CONFIG[goal] ?? GOAL_CONFIG.general_health;
+    const repRange = GOAL_REP_RANGES[goal] ?? GOAL_REP_RANGES.general_health;
+
+    const repsPerSet = repRange.default;
+
+    const focusMuscles = (input.focusMuscles ?? []).map((m) =>
+      this.normalizeSlug(m),
+    );
+    const specificMuscles = (input.specificMuscles ?? []).map((m) =>
+      this.normalizeSlug(m),
+    );
+
+    const focusGroupMinimums: Record<string, number> = {};
+    for (const focus of focusMuscles) {
+      focusGroupMinimums[focus] = FOCUS_GROUP_MIN_EXERCISES[focus] ?? 1;
+    }
+
+    if (gender === 'female') {
+      for (const focus of focusMuscles) {
+        if (['legs', 'core'].includes(focus)) {
+          focusGroupMinimums[focus] = Math.max(
+            focusGroupMinimums[focus] ?? 1,
+            (FOCUS_GROUP_MIN_EXERCISES[focus] ?? 1) + 1,
+          );
+        }
+      }
+    }
+
+    const focusGroupCount = focusMuscles.length || 1;
+    const extraForGroups = Math.max(0, focusGroupCount - 1);
+    let exerciseCount =
+      input.exerciseCount ?? preset.exerciseCount + extraForGroups;
+
+    const setsPerExercise =
+      input.setsPerExercise ??
+      Math.max(2, Math.round(preset.setsPerExercise * goalCfg.setsMultiplier));
+    const restBetweenSetsSec = input.restBetweenSetsSec ?? goalCfg.restSec;
+
+    const roleDefaults = SETS_BY_ROLE[level] ?? SETS_BY_ROLE.intermediate;
+    const goalModifier = SETS_GOAL_MODIFIER[goal] ?? {
+      compound: 0,
+      isolation: 0,
+    };
+    const compoundSets =
+      input.compoundSets ??
+      Math.max(2, roleDefaults.compound + goalModifier.compound);
+    const isolationSets =
+      input.isolationSets ??
+      Math.max(2, roleDefaults.isolation + goalModifier.isolation);
+
+    const avgSetsPerExercise = (compoundSets + isolationSets) / 2;
+    const estTimePerExercise =
+      DEFAULT_PER_SET_TIME_SEC * avgSetsPerExercise +
+      restBetweenSetsSec * Math.max(0, avgSetsPerExercise - 1);
+    const maxByTime = Math.floor(
+      (input.sessionDurationMin * 60) / estTimePerExercise,
+    );
+    exerciseCount = Math.min(exerciseCount, Math.max(2, maxByTime));
+
+    const expandedFromFocus: string[] = [];
+    for (const focus of focusMuscles) {
+      const hierarchy = MUSCLE_HIERARCHY[focus];
+      if (hierarchy) {
+        for (const child of hierarchy) {
+          if (child.priority >= 0.5) {
+            expandedFromFocus.push(child.slug);
+          }
+        }
+      } else {
+        expandedFromFocus.push(focus);
+      }
+    }
+
+    if (
+      gender === 'female' &&
+      focusMuscles.some((f) => ['legs', 'core'].includes(f))
+    ) {
+      if (!expandedFromFocus.includes('glutes'))
+        expandedFromFocus.push('glutes');
+      if (!expandedFromFocus.includes('hamstrings'))
+        expandedFromFocus.push('hamstrings');
+    }
+
+    const mandatoryMuscles = [
+      ...(input.mandatoryMuscles ?? []).map((m) => this.normalizeSlug(m)),
+      ...expandedFromFocus,
+      ...specificMuscles,
+    ];
+    const uniqueMandatory = [...new Set(mandatoryMuscles)];
+
     const normFatigue: Record<string, number> = {};
     for (const [k, v] of Object.entries(input.fatigueByMuscle)) {
       normFatigue[this.normalizeSlug(k)] = v;
     }
 
-    const normUsed = input.usedExercises ?? [];
+    const weeklyVolumeByMuscle: Record<string, number> = {};
+    for (const [k, v] of Object.entries(input.weeklyVolumeByMuscle ?? {})) {
+      weeklyVolumeByMuscle[this.normalizeSlug(k)] = v;
+    }
 
     return {
-      ...input,
-      mandatoryMuscles: normMandatory,
+      userId: input.userId,
+      sessionDurationMin: input.sessionDurationMin,
+      exerciseCount,
+      setsPerExercise,
+      compoundSets,
+      isolationSets,
+      restBetweenSetsSec,
+      repsPerSet,
+      experienceLevel: level,
+      goal,
+      gender,
+      focusMuscles,
+      specificMuscles,
+      focusGroupMinimums,
+      availableEquipment: input.availableEquipment,
+      phase: input.phase ?? DEFAULT_PHASE,
       fatigueByMuscle: normFatigue,
-      usedExercises: normUsed,
+      usedExercises: input.usedExercises ?? [],
+      mandatoryMuscles: uniqueMandatory,
+      userContraindications: input.userContraindications ?? [],
+      weeklyVolumeByMuscle,
+      weeklyVolumeScale: preset.weeklyVolumeScale,
     };
   }
 
   private solveLP(
     candidates: ExerciseMILPData[],
     weights: Map<string, number>,
-    input: WorkoutMILPInput,
+    input: NormalizedWorkoutMILPInput,
     coverage: CoverageCheck,
-  ): ExerciseMILPData[] {
+  ): LPSolution {
     const timeLimitSec = input.sessionDurationMin * 60;
     const N = input.exerciseCount;
 
-    // Build model for javascript-lp-solver
     const model: Record<string, unknown> = {
       optimize: 'score',
       opType: 'max',
       constraints: {
         exerciseCount: { equal: N },
         timeLimit: { max: timeLimitSec },
-      } as Record<string, unknown>,
-      variables: {} as Record<string, Record<string, number>>,
-      ints: {} as Record<string, number>,
+      },
+      variables: {},
+      ints: {},
     };
 
-    // Add fatigue limit constraints per muscle
     const allMuscles = new Set<string>();
     for (const ex of candidates) {
       const meta = ex.metadata ?? {};
@@ -430,22 +922,31 @@ export class WorkoutMilpService {
       };
     }
 
-    // Add mandatory muscle constraints (use expanded muscles from groups like 'back' -> [lats, upper_back, traps])
     if (coverage.expandedMandatory?.size) {
       for (const muscle of coverage.expandedMandatory) {
         if (coverage.coverable.has(muscle)) {
-          (model.constraints as Record<string, unknown>)[`mandatory_${muscle}`] = {
+          (model.constraints as Record<string, unknown>)[
+            `mandatory_${muscle}`
+          ] = {
             min: 1,
           };
         }
       }
     }
 
-    // Add push/pull balance constraints
-    (model.constraints as Record<string, unknown>)['pushPullBalance'] = { max: 1 };
-    (model.constraints as Record<string, unknown>)['pullPushBalance'] = { max: 1 };
+    for (const [group, min] of Object.entries(input.focusGroupMinimums)) {
+      (model.constraints as Record<string, unknown>)[`focusGroup_${group}`] = {
+        min,
+      };
+    }
 
-    // Track variation groups
+    (model.constraints as Record<string, unknown>)['pushPullBalance'] = {
+      max: N,
+    };
+    (model.constraints as Record<string, unknown>)['pullPushBalance'] = {
+      max: N,
+    };
+
     const variationGroups = new Set<string>();
     for (const ex of candidates) {
       const vg = ex.metadata?.variationGroup;
@@ -455,11 +956,11 @@ export class WorkoutMilpService {
       (model.constraints as Record<string, unknown>)[`vg_${vg}`] = { max: 1 };
     }
 
-    // Add variables
     for (const ex of candidates) {
       const meta = ex.metadata ?? {};
-      const sets = input.setsPerExercise;
-      const restSec = input.restBetweenSetsSec ?? DEFAULT_REST_BETWEEN_SETS_SEC;
+      const isCompound = this.isCompoundExercise(ex);
+      const sets = isCompound ? input.compoundSets : input.isolationSets;
+      const restSec = input.restBetweenSetsSec;
       const totalTime = this.calculateExerciseTime(meta, sets, restSec);
       const weight = weights.get(ex.slug) ?? 0.01;
       const isPush = ['push', 'press'].includes(ex.movementPattern ?? '');
@@ -473,25 +974,28 @@ export class WorkoutMilpService {
         pullPushBalance: isPull ? 1 : isPush ? -1 : 0,
       };
 
-      // Fatigue per muscle
       for (const mw of meta.primaryMuscleWeights ?? []) {
         const slug = this.normalizeSlug(mw.slug);
         variable[`fatigue_${slug}`] = mw.weight * (meta.fatigueCost ?? 5) * 0.1;
       }
 
-      // Mandatory muscles (only those coverable, use expanded mandatory set)
-      // Use 1 for binary coverage: any exercise hitting this muscle contributes 1
       if (coverage.expandedMandatory?.size) {
         const coveredMuscles = new Set<string>();
         for (const mw of meta.primaryMuscleWeights ?? []) {
           const slug = this.normalizeSlug(mw.slug);
-          if (coverage.expandedMandatory.has(slug) && coverage.coverable.has(slug)) {
+          if (
+            coverage.expandedMandatory.has(slug) &&
+            coverage.coverable.has(slug)
+          ) {
             coveredMuscles.add(slug);
           }
         }
         for (const mw of meta.secondaryMuscleWeights ?? []) {
           const slug = this.normalizeSlug(mw.slug);
-          if (coverage.expandedMandatory.has(slug) && coverage.coverable.has(slug)) {
+          if (
+            coverage.expandedMandatory.has(slug) &&
+            coverage.coverable.has(slug)
+          ) {
             coveredMuscles.add(slug);
           }
         }
@@ -500,20 +1004,43 @@ export class WorkoutMilpService {
         }
       }
 
-      // Variation group
+      for (const [group] of Object.entries(input.focusGroupMinimums)) {
+        const groupMuscles = this.getGroupMuscles(group);
+        const hitsGroup = [
+          ...(meta.primaryMuscleWeights ?? []),
+          ...(meta.secondaryMuscleWeights ?? []),
+        ].some((mw) => groupMuscles.has(this.normalizeSlug(mw.slug)));
+        if (hitsGroup) {
+          variable[`focusGroup_${group}`] = 1;
+        }
+      }
+
       const vg = meta.variationGroup;
       if (vg) {
         variable[`vg_${vg}`] = 1;
       }
 
-      (model.variables as Record<string, Record<string, number>>)[ex.slug] = variable;
+      (model.variables as Record<string, Record<string, number>>)[ex.slug] =
+        variable;
       (model.ints as Record<string, number>)[ex.slug] = 1;
     }
 
-    // Solve
-    const results: Record<string, number> = solver.Solve(model as never) as Record<string, number>;
+    const results: Record<string, any> = solver.Solve(model as never) as Record<
+      string,
+      any
+    >;
+    const isFeasible = results.feasible !== false;
 
-    // Extract selected exercises
+    if (!isFeasible) {
+      const greedySelected = this.greedyFallback(
+        candidates,
+        weights,
+        input,
+        coverage,
+      );
+      return { selected: greedySelected, usedFallback: true };
+    }
+
     const selected: ExerciseMILPData[] = [];
     for (const ex of candidates) {
       if (results[ex.slug] && results[ex.slug] > 0.5) {
@@ -521,15 +1048,27 @@ export class WorkoutMilpService {
       }
     }
 
-    // If solver couldn't find exact N or missed mandatory coverage, fall back.
-    if (selected.length < N || !this.isFeasibleSelection(selected, input, coverage)) {
-      return this.greedyFallback(candidates, weights, input, coverage);
+    if (
+      selected.length < N ||
+      !this.isFeasibleSelection(selected, input, coverage)
+    ) {
+      const greedySelected = this.greedyFallback(
+        candidates,
+        weights,
+        input,
+        coverage,
+      );
+      return { selected: greedySelected, usedFallback: true };
     }
 
-    return selected;
+    return { selected, usedFallback: false };
   }
 
-  private isFeasibleSelection(selected: ExerciseMILPData[], input: WorkoutMILPInput, coverage?: CoverageCheck): boolean {
+  private isFeasibleSelection(
+    selected: ExerciseMILPData[],
+    input: NormalizedWorkoutMILPInput,
+    coverage?: CoverageCheck,
+  ): boolean {
     if (selected.length < input.exerciseCount) {
       return false;
     }
@@ -556,8 +1095,11 @@ export class WorkoutMilpService {
     return true;
   }
 
-  private checkCoverageFeasibility(candidates: ExerciseMILPData[], input: WorkoutMILPInput): CoverageCheck {
-    const mandatory = input.mandatoryMuscles ?? [];
+  private checkCoverageFeasibility(
+    candidates: ExerciseMILPData[],
+    input: NormalizedWorkoutMILPInput,
+  ): CoverageCheck {
+    const mandatory = input.mandatoryMuscles;
     const coverable = new Set<string>();
 
     if (mandatory.length === 0) {
@@ -586,8 +1128,29 @@ export class WorkoutMilpService {
   }
 
   private detectSessionType(mandatory: string[]): SessionType {
-    const hasUpper = mandatory.some((m) => ['chest', 'back', 'shoulders', 'lats', 'upper_back', 'traps', 'biceps', 'triceps'].includes(m));
-    const hasLower = mandatory.some((m) => ['quads', 'quadriceps', 'hamstrings', 'glutes', 'calves', 'legs', 'leg'].includes(m));
+    const hasUpper = mandatory.some((m) =>
+      [
+        'chest',
+        'back',
+        'shoulders',
+        'lats',
+        'upper_back',
+        'traps',
+        'biceps',
+        'triceps',
+      ].includes(m),
+    );
+    const hasLower = mandatory.some((m) =>
+      [
+        'quads',
+        'quadriceps',
+        'hamstrings',
+        'glutes',
+        'calves',
+        'legs',
+        'leg',
+      ].includes(m),
+    );
 
     if (hasUpper && hasLower) return 'full_body';
     if (hasUpper) return 'upper';
@@ -598,13 +1161,12 @@ export class WorkoutMilpService {
   private greedyFallback(
     candidates: ExerciseMILPData[],
     weights: Map<string, number>,
-    input: WorkoutMILPInput,
+    input: NormalizedWorkoutMILPInput,
     coverage?: CoverageCheck,
   ): ExerciseMILPData[] {
     const timeLimitSec = input.sessionDurationMin * 60;
     const N = input.exerciseCount;
-    const sets = input.setsPerExercise;
-    const restSec = input.restBetweenSetsSec ?? DEFAULT_REST_BETWEEN_SETS_SEC;
+    const restSec = input.restBetweenSetsSec;
 
     const sorted = [...candidates].sort(
       (a, b) => (weights.get(b.slug) ?? 0) - (weights.get(a.slug) ?? 0),
@@ -613,17 +1175,23 @@ export class WorkoutMilpService {
     const selected: ExerciseMILPData[] = [];
     const usedGroups = new Set<string>();
     const coveredMandatory = new Set<string>();
+    const groupExerciseCount: Record<string, number> = {};
     let totalTime = 0;
 
     const canSelect = (ex: ExerciseMILPData): boolean => {
       const meta = ex.metadata ?? {};
+      const sets = this.isCompoundExercise(ex)
+        ? input.compoundSets
+        : input.isolationSets;
       const exerciseTime = this.calculateExerciseTime(meta, sets, restSec);
       if (totalTime + exerciseTime > timeLimitSec) return false;
 
       const vg = meta.variationGroup;
       if (vg && usedGroups.has(vg)) {
         const missingMandatory = coverage?.expandedMandatory
-          ? [...coverage.expandedMandatory].filter((m) => !coveredMandatory.has(m))
+          ? [...coverage.expandedMandatory].filter(
+              (m) => !coveredMandatory.has(m),
+            )
           : [];
         if (missingMandatory.length === 0 && selected.length >= N - 1) {
           return false;
@@ -635,6 +1203,9 @@ export class WorkoutMilpService {
 
     const select = (ex: ExerciseMILPData): void => {
       const meta = ex.metadata ?? {};
+      const sets = this.isCompoundExercise(ex)
+        ? input.compoundSets
+        : input.isolationSets;
       const exerciseTime = this.calculateExerciseTime(meta, sets, restSec);
       selected.push(ex);
       totalTime += exerciseTime;
@@ -654,8 +1225,20 @@ export class WorkoutMilpService {
           coveredMandatory.add(slug);
         }
       }
+
+      for (const [group] of Object.entries(input.focusGroupMinimums)) {
+        const groupMuscles = this.getGroupMuscles(group);
+        const hitsGroup = [
+          ...(meta.primaryMuscleWeights ?? []),
+          ...(meta.secondaryMuscleWeights ?? []),
+        ].some((mw) => groupMuscles.has(this.normalizeSlug(mw.slug)));
+        if (hitsGroup) {
+          groupExerciseCount[group] = (groupExerciseCount[group] ?? 0) + 1;
+        }
+      }
     };
 
+    // Phase 1: Cover mandatory muscles (expanded from focus groups + specific)
     if (coverage?.expandedMandatory?.size) {
       for (const muscle of coverage.expandedMandatory) {
         if (coveredMandatory.has(muscle)) continue;
@@ -674,6 +1257,32 @@ export class WorkoutMilpService {
       }
     }
 
+    // Phase 2: Ensure per-focus-group minimums
+    for (const [group, min] of Object.entries(input.focusGroupMinimums)) {
+      const currentCount = groupExerciseCount[group] ?? 0;
+      const deficit = min - currentCount;
+      if (deficit <= 0) continue;
+
+      const groupMuscles = this.getGroupMuscles(group);
+      let added = 0;
+      for (const ex of sorted) {
+        if (added >= deficit) break;
+        if (selected.includes(ex)) continue;
+        if (!canSelect(ex)) continue;
+
+        const hitsGroup = [
+          ...(ex.metadata?.primaryMuscleWeights ?? []),
+          ...(ex.metadata?.secondaryMuscleWeights ?? []),
+        ].some((mw) => groupMuscles.has(this.normalizeSlug(mw.slug)));
+
+        if (hitsGroup) {
+          select(ex);
+          added++;
+        }
+      }
+    }
+
+    // Phase 3: Fill remaining slots preferring mandatory coverage
     for (const ex of sorted) {
       if (selected.length >= N) break;
 
@@ -698,36 +1307,51 @@ export class WorkoutMilpService {
       select(ex);
     }
 
+    // Phase 4: Relaxed — allow any exercise regardless of mandatory coverage
+    if (selected.length < N) {
+      for (const ex of sorted) {
+        if (selected.length >= N) break;
+        if (selected.includes(ex)) continue;
+        if (!canSelect(ex)) continue;
+        select(ex);
+      }
+    }
+
     return selected;
   }
 
   private fallbackSelection(
     candidates: ExerciseMILPData[],
-    input: WorkoutMILPInput,
+    input: NormalizedWorkoutMILPInput,
     coverage?: CoverageCheck,
   ): WorkoutMILPOutput {
     const weights = this.calculateWeights(candidates, input);
     const selected = this.greedyFallback(candidates, weights, input, coverage);
-    return this.buildOutput(selected.slice(0, input.exerciseCount), input, coverage, true);
+    return this.buildOutput(
+      selected.slice(0, input.exerciseCount),
+      input,
+      coverage,
+      true,
+    );
   }
 
   private buildOutput(
     selected: ExerciseMILPData[],
-    input: WorkoutMILPInput,
+    input: NormalizedWorkoutMILPInput,
     coverage?: CoverageCheck,
     usedFallback = false,
   ): WorkoutMILPOutput {
     const totalLoadByMuscle: Record<string, number> = {};
     let totalTimeSec = 0;
-    const sets = input.setsPerExercise;
-    const restSec = input.restBetweenSetsSec ?? DEFAULT_REST_BETWEEN_SETS_SEC;
+    const restSec = input.restBetweenSetsSec;
 
     const exercises = selected.map((ex, i) => {
       const meta = ex.metadata ?? {};
+      const isCompound = this.isCompoundExercise(ex);
+      const sets = isCompound ? input.compoundSets : input.isolationSets;
       const exerciseTime = this.calculateExerciseTime(meta, sets, restSec);
       totalTimeSec += exerciseTime;
 
-      // Calculate load per muscle
       for (const mw of meta.primaryMuscleWeights ?? []) {
         const slug = this.normalizeSlug(mw.slug);
         const load = (meta.fatigueCost ?? 5) * mw.weight;
@@ -741,7 +1365,8 @@ export class WorkoutMilpService {
 
       return {
         exerciseSlug: ex.slug,
-        sets: input.setsPerExercise,
+        sets,
+        repsPerSet: input.repsPerSet,
         order: i + 1,
       };
     });
@@ -754,12 +1379,31 @@ export class WorkoutMilpService {
       : [];
     const partialCoverage = unmetMandatory.length > 0;
 
-    return { exercises, totalLoadByMuscle, totalTimeSec, usedFallback, partialCoverage, unmetMandatory };
+    return {
+      exercises,
+      totalLoadByMuscle,
+      totalTimeSec,
+      usedFallback,
+      partialCoverage,
+      unmetMandatory,
+    };
   }
 
   private expandMuscleGroup(slug: string): string[] {
     const normalized = this.normalizeSlug(slug);
     return MUSCLE_GROUPS[normalized] ?? [normalized];
+  }
+
+  private getGroupMuscles(group: string): Set<string> {
+    const hierarchy = MUSCLE_HIERARCHY[group];
+    if (hierarchy) {
+      return new Set(hierarchy.map((h) => h.slug));
+    }
+    const groupMembers = MUSCLE_GROUPS[group];
+    if (groupMembers) {
+      return new Set(groupMembers);
+    }
+    return new Set([group]);
   }
 
   private calculateExerciseTime(
@@ -775,26 +1419,37 @@ export class WorkoutMilpService {
   async computeFatigueAndHistory(
     userId: string,
     daysBack: number = 14,
-  ): Promise<{ fatigueByMuscle: Record<string, number>; usedExercises: string[] }> {
-    const sessions = await this.sessionsRepository.findRecentCompletedByUserId(userId, daysBack);
+  ): Promise<{
+    fatigueByMuscle: Record<string, number>;
+    usedExercises: string[];
+  }> {
+    const sessions = await this.sessionsRepository.findRecentCompletedByUserId(
+      userId,
+      daysBack,
+    );
 
     const fatigueByMuscle: Record<string, number> = {};
     const exerciseCounts: Record<string, number> = {};
 
     for (const session of sessions) {
       for (const ex of session.exercises ?? []) {
-        exerciseCounts[ex.exerciseSlug] = (exerciseCounts[ex.exerciseSlug] ?? 0) + 1;
+        exerciseCounts[ex.exerciseSlug] =
+          (exerciseCounts[ex.exerciseSlug] ?? 0) + 1;
 
-        const exercise = await this.exercisesRepository.findBySlug(ex.exerciseSlug);
+        const exercise = await this.exercisesRepository.findBySlug(
+          ex.exerciseSlug,
+        );
         if (exercise?.metadata) {
           for (const mw of exercise.metadata.primaryMuscleWeights ?? []) {
             const slug = this.normalizeSlug(mw.slug);
-            const load = (exercise.metadata.fatigueCost ?? 5) * mw.weight * ex.sets;
+            const load =
+              (exercise.metadata.fatigueCost ?? 5) * mw.weight * ex.sets;
             fatigueByMuscle[slug] = (fatigueByMuscle[slug] ?? 0) + load;
           }
           for (const mw of exercise.metadata.secondaryMuscleWeights ?? []) {
             const slug = this.normalizeSlug(mw.slug);
-            const load = (exercise.metadata.fatigueCost ?? 5) * mw.weight * 0.3 * ex.sets;
+            const load =
+              (exercise.metadata.fatigueCost ?? 5) * mw.weight * 0.3 * ex.sets;
             fatigueByMuscle[slug] = (fatigueByMuscle[slug] ?? 0) + load;
           }
         }
@@ -806,8 +1461,165 @@ export class WorkoutMilpService {
     return { fatigueByMuscle, usedExercises };
   }
 
+  async computeWeeklyVolume(userId: string): Promise<Record<string, number>> {
+    const sessions = await this.sessionsRepository.findRecentCompletedByUserId(
+      userId,
+      7,
+    );
+
+    const volumeByMuscle: Record<string, number> = {};
+
+    for (const session of sessions) {
+      for (const ex of session.exercises ?? []) {
+        const exercise = await this.exercisesRepository.findBySlug(
+          ex.exerciseSlug,
+        );
+        if (exercise?.metadata) {
+          const allMW = [
+            ...(exercise.metadata.primaryMuscleWeights ?? []),
+            ...(exercise.metadata.secondaryMuscleWeights ?? []),
+          ];
+          for (const mw of allMW) {
+            const slug = this.normalizeSlug(mw.slug);
+            volumeByMuscle[slug] = (volumeByMuscle[slug] ?? 0) + ex.sets;
+          }
+        }
+      }
+    }
+
+    return volumeByMuscle;
+  }
+
+  async computeMetrics(input: {
+    exercises: { exerciseSlug: string; sets: number }[];
+    restBetweenSetsSec?: number;
+    bodyweightKg?: number;
+    goal?: string;
+  }): Promise<{
+    totalSets: number;
+    totalReps: number;
+    estimatedTonnageKg: number;
+    relativeIntensity: number;
+    activeTimeSec: number;
+    restTimeSec: number;
+    estimatedCalories: number;
+    muscleLoadScores: Record<string, number>;
+    fatigueIndex: number;
+  }> {
+    const restSec = input.restBetweenSetsSec ?? 90;
+    const bodyweight = input.bodyweightKg ?? 70;
+    const goal = input.goal ?? 'general_health';
+    const repRange = GOAL_REP_RANGES[goal] ?? GOAL_REP_RANGES.general_health;
+    const repsPerSet = repRange.default;
+
+    let totalSets = 0;
+    let totalReps = 0;
+    let estimatedTonnageKg = 0;
+    let activeTimeSec = 0;
+    let restTimeSec = 0;
+    const muscleLoadScores: Record<string, number> = {};
+    let totalFatigue = 0;
+
+    for (let i = 0; i < input.exercises.length; i++) {
+      const exInput = input.exercises[i];
+      const exercise = await this.exercisesRepository.findBySlug(
+        exInput.exerciseSlug,
+      );
+      const meta = exercise?.metadata;
+      const sets = exInput.sets;
+      totalSets += sets;
+      totalReps += sets * repsPerSet;
+
+      const isCompound =
+        (meta?.primaryMuscleWeights?.length ?? 0) > 1 ||
+        ['squat', 'deadlift', 'press', 'row', 'clean', 'jerk', 'snatch'].some(
+          (p) => (exercise?.movementPattern ?? '').toLowerCase().includes(p),
+        );
+      const loadPerRep = isCompound ? bodyweight * 0.6 : bodyweight * 0.3;
+      estimatedTonnageKg += sets * repsPerSet * loadPerRep;
+
+      const perSetTime = meta?.timeCostSec ?? DEFAULT_PER_SET_TIME_SEC;
+      activeTimeSec += perSetTime * sets;
+      if (i < input.exercises.length) {
+        restTimeSec += restSec * Math.max(0, sets - 1);
+      }
+
+      const allMW = [
+        ...(meta?.primaryMuscleWeights ?? []),
+        ...(meta?.secondaryMuscleWeights ?? []),
+      ];
+      for (const mw of allMW) {
+        const slug = this.normalizeSlug(mw.slug);
+        const fatigueCost = meta?.fatigueCost ?? 5;
+        const load = mw.weight * sets * fatigueCost * 0.1;
+        muscleLoadScores[slug] = (muscleLoadScores[slug] ?? 0) + load;
+      }
+
+      totalFatigue += (meta?.fatigueCost ?? 5) * sets;
+    }
+
+    const sessionCapacity = totalSets * 10;
+    const fatigueIndex = Math.min(
+      100,
+      Math.round((totalFatigue / Math.max(1, sessionCapacity)) * 100),
+    );
+
+    const goalIntensity: Record<string, number> = {
+      strength: 85,
+      hypertrophy: 72,
+      endurance: 55,
+      weight_loss: 60,
+      general_health: 65,
+      rehab: 40,
+      mobility: 35,
+    };
+    const relativeIntensity = goalIntensity[goal] ?? 65;
+
+    const metByGoal: Record<string, number> = {
+      strength: 3.5,
+      hypertrophy: 5.0,
+      endurance: 6.0,
+      weight_loss: 5.5,
+      general_health: 4.0,
+      rehab: 2.5,
+      mobility: 2.0,
+    };
+    const met = metByGoal[goal] ?? 4.0;
+    const activeTimeMin = activeTimeSec / 60;
+    const estimatedCalories = Math.round(
+      (met * bodyweight * activeTimeMin) / 60,
+    );
+
+    return {
+      totalSets,
+      totalReps,
+      estimatedTonnageKg: Math.round(estimatedTonnageKg),
+      relativeIntensity,
+      activeTimeSec,
+      restTimeSec,
+      estimatedCalories,
+      muscleLoadScores,
+      fatigueIndex,
+    };
+  }
+
   private normalizeSlug(slug: string): string {
     return (MUSCLE_NORMALIZATION[slug.toLowerCase()] ?? slug).toLowerCase();
+  }
+
+  private isCompoundExercise(ex: ExerciseMILPData): boolean {
+    const meta = ex.metadata ?? {};
+    if ((meta.primaryMuscleWeights?.length ?? 0) > 1) return true;
+    const mp = (ex.movementPattern ?? '').toLowerCase();
+    if (
+      ['squat', 'deadlift', 'press', 'row', 'clean', 'jerk', 'snatch'].some(
+        (p) => mp.includes(p),
+      )
+    )
+      return true;
+    const et = (ex.exerciseType ?? '').toLowerCase();
+    if (et === 'compound' || et === 'strength') return true;
+    return false;
   }
 }
 
@@ -815,4 +1627,9 @@ interface CoverageCheck {
   mandatory: string[];
   coverable: Set<string>;
   expandedMandatory: Set<string>;
+}
+
+interface LPSolution {
+  selected: ExerciseMILPData[];
+  usedFallback: boolean;
 }

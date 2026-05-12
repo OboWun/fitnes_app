@@ -16,11 +16,11 @@
 │                                        │   (pg.Pool query)  │ │
 │                                        └─────────┬─────────┘ │
 └──────────────────────────────────────────────────┼───────────┘
-                                                   │ TCP/SQL
-                                         ┌─────────▼─────────┐
-                                         │    PostgreSQL      │
-                                         │   (tables, funcs)  │
-                                         └───────────────────┘
+                                                    │ TCP/SQL
+                                          ┌─────────▼─────────┐
+                                          │    PostgreSQL      │
+                                          │   (tables, funcs)  │
+                                          └───────────────────┘
 ```
 
 ---
@@ -48,132 +48,133 @@
 
 ```
 Client ──GET /muscles──▶ MusclesController
-                              │
-                         MusclesService
-                              │
-                    MusclesSqlRepository
-                              │
-                    ──SELECT * FROM muscles──▶ PostgreSQL
-                              │
-                    ◀── Muscle[] ──────────────
-```
-
-SQL-запрос (пример для muscles):
-```sql
-SELECT id, name, slug FROM muscles ORDER BY name;
-```
-
-#### Muscles: поиск антагонистов
-
-```sql
-SELECT m.name, m.slug
-FROM muscles m
-JOIN muscle_antagonists ma ON m.id = ma.antagonist_id
-WHERE ma.muscle_id = (SELECT id FROM muscles WHERE slug = $1);
+                               │
+                          MusclesService
+                               │
+                     MusclesSqlRepository
+                               │
+                     ──SELECT * FROM muscles──▶ PostgreSQL
+                               │
+                     ◀── Muscle[] ──────────────
 ```
 
 ### 2. Упражнения (Read-Only, фильтрация)
 
-#### Пагинированный поиск с фильтрами
-
-SQL (динамически строится в зависимости от фильтров):
-
-```sql
--- Подсчёт общего количества
-SELECT COUNT(DISTINCT e.id) AS total
-FROM exercises e
-WHERE 1=1
-  AND EXISTS (
-    SELECT 1 FROM exercise_equipments ee
-    JOIN equipments eq ON eq.id = ee.equipment_id
-    WHERE ee.exercise_id = e.id AND eq.slug = ANY($1::text[])
-  )
-  AND NOT EXISTS (
-    SELECT 1 FROM exercise_contraindications ec
-    JOIN contraindications c ON c.id = ec.contraindication_id
-    WHERE ec.exercise_id = e.id AND c.slug = ANY($2::text[])
-  )
-  AND e.name ILIKE '%' || $3 || '%';
-
--- Получение страницы данных (через SQL-функцию)
-SELECT find_exercise_full_by_slug(e.slug)
-FROM exercises e
-WHERE /* те же фильтры */
-ORDER BY e.name
-LIMIT $4 OFFSET $5;
-```
-
-#### Поиск похожих упражнений
-
-```sql
-SELECT e.*, /* + агрегация связей */
-FROM exercises e
-WHERE e.slug != $1
-  AND EXISTS (
-    SELECT 1 FROM exercise_target_muscles etm
-    WHERE etm.exercise_id = e.id
-    AND etm.muscle_id = ANY(
-      SELECT etm2.muscle_id FROM exercise_target_muscles etm2
-      WHERE etm2.exercise_id = (SELECT id FROM exercises WHERE slug = $1)
-    )
-  )
-ORDER BY e.name
-LIMIT $2 OFFSET $3;
-```
+- Пагинированный поиск с динамическими фильтрами (equipments, contraindications, targetMuscles, search)
+- `findForMILP()` — единый SQL-запрос для загрузки всех упражнений с metadata для MILP
+- Поиск похожих (same target muscles) и антагонистов (antagonist muscles)
 
 ### 3. Пользователи (Read-Write)
 
-#### Авторизация
+- Авторизация по deviceId → JWT
+- Профиль: name, gender, weight, height, age, contraindications
+- `metadata`: goal, experienceLevel, availableEquipment, recoveryCapacity и т.д.
 
 ```sql
--- findByDeviceId
-SELECT id, device_id, name, weight, height, age, created_at
-FROM users WHERE device_id = $1;
-
--- create
-INSERT INTO users (id, device_id, created_at)
-VALUES ($1, $2, NOW())
-RETURNING *;
-
--- update
-UPDATE users SET name = $2, weight = $3, height = $4, age = $5
-WHERE id = $1
-RETURNING *;
+SELECT id, device_id, name, gender, weight, height, age, contraindications, metadata, created_at
+FROM users WHERE id = $1;
 ```
 
-#### Обновление противопоказаний (транзакция)
+### 4. Workout MILP — генерация одной тренировки
 
-```sql
-BEGIN;
-  UPDATE users SET name = $2, weight = $3, height = $4, age = $5 WHERE id = $1;
-  DELETE FROM user_contraindications WHERE user_id = $1;
-  INSERT INTO user_contraindications (user_id, contraindication_id)
-    SELECT $1, id FROM contraindications WHERE slug = ANY($6::text[]);
-COMMIT;
+```
+Client ──POST /workout-milp/generate──▶ WorkoutMilpController
+                                              │
+                                    1. Load user profile (gender, metadata, contraindications)
+                                    2. computeFatigueAndHistory() — 14-day window
+                                    3. computeWeeklyVolume() — 7-day window
+                                              │
+                                    WorkoutMilpService.generateWorkout()
+                                              │
+                                    4. normalizeInput() — derive exerciseCount, sets, reps, rest
+                                       from goal + experience + gender + focus
+                                              │
+                                    5. filterCandidates() — equipment, contraindications
+                                              │
+                                    6. calculateWeights() — session-aware, gender-aware,
+                                       weekly volume, fatigue, diversity, goal bonuses
+                                              │
+                                    7. solveLP() or greedyFallback()
+                                              │
+                                    8. buildOutput() — variable sets per exercise type
+                                              │
+                                     ◀── WorkoutMILPOutput
 ```
 
-### 4. Workout Templates (Read-Write, транзакции)
+**Ключевые SQL-запросы:**
+- `findForMILP()` — один запрос для загрузки всех упражнений с metadata
+- `findRecentCompletedByUserId()` — последние завершённые сессии за N дней
 
-#### Создание шаблона
+### 5. Weekly Plan — генерация плана на неделю
 
-```sql
-BEGIN;
-  INSERT INTO workout_templates (id, user_id, name, description)
-  VALUES ($1, $2, $3, $4);
-
-  INSERT INTO workout_exercises (template_id, exercise_slug, sets, reps, rest_between_sets, rest_after_exercise, sort_order)
-  VALUES ($1, $5, $6, $7, $8, $9, $10), ...;
-COMMIT;
+```
+Client ──POST /workout-milp/weekly-plan──▶ WorkoutMilpController
+                                                │
+                                      1. Load user (gender)
+                                                │
+                                      WeeklyProcessMilpService.generateWeeklyPlan()
+                                                │
+                                      2. selectSplit(count, level, goal) → SplitStrategy
+                                         - SPLIT_STRATEGIES matrix
+                                         - Goal modifiers (rehab→Full Body)
+                                                │
+                                      3. assignDays(availableDays, sessionCount)
+                                         - Best-spaced subset or evenly spaced
+                                                │
+                                      4. computeWeeklyVolumeBudget(level)
+                                         - MUSCLE_WEEKLY_VOLUME_TARGETS × weeklyVolumeScale
+                                                │
+                                      For each session:
+                                        5. deriveSessionParams() — focus muscles, exercise count
+                                           from SESSION_MUSCLE_FOCUS + volume budget
+                                        6. Call workoutMilpService.generateWorkout()
+                                           with per-session focus + accumulated volume
+                                        7. Update accumulatedVolume, fatigueByMuscle, usedExercises
+                                                │
+                                      8. Save TrainingBlock + WorkoutSessions to DB
+                                                │
+                                       ◀── WeeklyProcessOutput
 ```
 
-#### Получение расписания
+### 6. Workout Dialog — диалоговый сбор параметров
 
+```
+Client ──POST /workout-dialog/start──▶ WorkoutDialogController
+                                             │
+                                   1. Load user profile
+                                   2. Pre-fill collectedParams from profile
+                                      (goal, experienceLevel, availableEquipment)
+                                   3. Compute first unanswered step (skip pre-filled)
+                                   4. Create dialog row in DB
+                                   5. Return question + options
+                                             │
+                                   ◀── DialogStepResponse
+
+Client ──POST /workout-dialog/:id/answer──▶ WorkoutDialogController
+                                                │
+                                      1. Load dialog from DB
+                                      2. Validate + apply answer to collectedParams
+                                      3. Compute next step (skip non-applicable)
+                                      4. If complete → return params
+                                         Else → return next question
+                                                │
+                                       ◀── DialogStepResponse | DialogCompleteResponse
+
+Client ──GET /workout-dialog/:id──▶ Resume dialog after app restart
+```
+
+**SQL для диалога:**
 ```sql
-SELECT sw.*, wt.name AS template_name
-FROM scheduled_workouts sw
-JOIN workout_templates wt ON wt.id = sw.template_id
-WHERE sw.user_id = $1
-ORDER BY sw.day_of_week, sw.time;
+-- Create
+INSERT INTO workout_dialogs (id, user_id, current_step, plan_type, collected_params)
+VALUES ($1, $2, $3, $4, $5);
+
+-- Update step
+UPDATE workout_dialogs SET current_step = $2, plan_type = $3, collected_params = $4, updated_at = NOW()
+WHERE id = $1;
+
+-- Read
+SELECT * FROM workout_dialogs WHERE id = $1;
 ```
 
 ---
@@ -205,9 +206,6 @@ DATABASE_URL=postgresql://user:password@localhost:5432/fitness_app
    *SqlRepository methods
 ```
 
-- Каждый вызов `query()` берёт соединение из pool и возвращает обратно
-- Для транзакций — `pool.connect()` захватывает одно соединение на всю транзакцию
-
 ---
 
 ## Статические файлы: media
@@ -218,14 +216,8 @@ Client ──GET /media/trmte8s.gif──▶ NestJS (express.static middleware)
                                   ┌────▼─────────────┐
                                   │ backend/media/    │
                                   │   trmte8s.gif     │
-                                  │   LMGXZn8.gif     │
                                   │   ... (~1500)     │
                                   └──────────────────┘
-```
-
-Конфигурация в `main.ts`:
-```typescript
-app.use('/media', express.static(path.join(__dirname, '..', 'media')));
 ```
 
 Поле `gifUrl` в ответе API содержит относительный путь `/media/{exerciseId}.gif`.

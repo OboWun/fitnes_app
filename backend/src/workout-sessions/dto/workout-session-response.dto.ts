@@ -1,5 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import type { WorkoutSessionMetadata, WorkoutSessionExerciseMetadata } from '../../entities/index.js';
+import type {
+  WorkoutSessionMetadata,
+  WorkoutSessionExerciseMetadata,
+} from '../../entities/index.js';
 
 export class SessionExerciseResponseDto {
   @ApiProperty()
@@ -31,7 +34,9 @@ export class WorkoutSessionResponseDto {
   @ApiPropertyOptional()
   time?: string;
 
-  @ApiPropertyOptional({ enum: ['planned', 'completed', 'skipped', 'replaced'] })
+  @ApiPropertyOptional({
+    enum: ['planned', 'completed', 'skipped', 'replaced'],
+  })
   status?: string;
 
   @ApiPropertyOptional({ type: [SessionExerciseResponseDto] })

@@ -4,21 +4,31 @@
 
 ### 1.1 Workout MILP
 
-**Что делает:** выбирает упражнения и число подходов для одной тренировки.
+**Что делает:** выбирает упражнения и число подходов для одной тренировки с учётом цели, опыта, пола и недельного объёма.
 
 **Входной контракт:**
 
 ```ts
 interface WorkoutMILPInput {
   userId: string;
-  sessionDurationMin: number;       // 20..120, обязательный параметр запроса
-  exerciseCount: number;            // 3..8
-  setsPerExercise: number;          // 1..6
-  availableEquipment: string[];     // slug-коды Equipment
-  phase?: string;                   // accumulation | intensification | realization | deload | transition
-  fatigueByMuscle: Record<string, number>;  // slug мышцы -> уровень усталости
-  usedExercises: string[];          // slug-коды упражнений из предыдущих тренировок недели
-  mandatoryMuscles?: string[];      // slug-коды мышц, которые обязательно покрыть
+  sessionDurationMin: number;       // 20..120, обязательный
+  experienceLevel?: string;         // beginner | intermediate | advanced
+  goal?: string;                    // strength | hypertrophy | endurance | weight_loss | general_health | rehab | mobility
+  focusMuscles?: string[];          // мышечные группы для акцента
+  specificMuscles?: string[];       // конкретные мышцы для приоритета
+  exerciseCount?: number;           // 3..8, auto-derived если не указан
+  setsPerExercise?: number;         // legacy, игнорируется если есть compoundSets/isolationSets
+  compoundSets?: number;            // подходы для compound-упражнений (3-5)
+  isolationSets?: number;           // подходы для isolation-упражнений (2-3)
+  restBetweenSetsSec?: number;      // auto-derived из goal
+  availableEquipment: string[];
+  phase?: string;
+  fatigueByMuscle: Record<string, number>;
+  usedExercises: string[];
+  mandatoryMuscles?: string[];
+  userContraindications?: string[];
+  gender?: string;                  // male | female
+  weeklyVolumeByMuscle?: Record<string, number>;
 }
 ```
 
@@ -28,151 +38,141 @@ interface WorkoutMILPInput {
 interface WorkoutMILPOutput {
   exercises: {
     exerciseSlug: string;
-    sets: number;
+    sets: number;          // переменный: compound 3-5, isolation 2-3
+    repsPerSet: number;    // определяется goal: strength=5, hypertrophy=10, endurance=15
     order: number;
   }[];
-  totalLoadByMuscle: Record<string, number>;  // slug мышцы -> суммарная нагрузка
+  totalLoadByMuscle: Record<string, number>;
   totalTimeSec: number;
+  usedFallback?: boolean;
+  partialCoverage?: boolean;
+  unmetMandatory?: string[];
 }
 ```
 
-**Тренировка = упражнение + количество подходов.** `reps` не используется.
+**Ключевое:** `sets` и `repsPerSet` — переменные, зависят от типа упражнения (compound/isolation) и цели.
 
 ### 1.2 Weekly Process MILP
 
-**Что делает:** строит расписание тренировок на неделю с привязкой к дням и контролем отдыха.
+**Что делает:** строит план на неделю с автоподбором сплита и распределением объёма по мышцам.
 
 **Входной контракт:**
 
 ```ts
-interface WeeklyProcessMILPInput {
+interface WeeklyProcessInput {
   userId: string;
-  availableDays: DayOfWeek[];       // дни, в которые можно тренироваться
+  availableDays: DayOfWeek[];
   trainingCountPerWeek: number;     // 2..6
-  sessionDurationMin: number;       // лимит на одну сессию
-  minRestDays: number;              // минимум дней отдыха между сессиями
-  maxRestDays: number;              // максимум дней отдыха между сессиями
-  weeklyLoadLimit: number;          // суммарный лимит нагрузки на неделю
-  consecutiveTrainingDaysLimit: number; // максимум подряд идущих тренировочных дней
-  phase: string;                    // accumulation | intensification | realization | deload | transition
-  weekType: string;                 // base | build | taper | recovery
-  startFatigueByMuscle: Record<string, number>; // начальная усталость по мышцам
+  sessionDurationMin: number;       // 20..120
+  experienceLevel: string;          // beginner | intermediate | advanced
+  goal: string;
+  gender: string;                   // male | female
+  availableEquipment: string[];
+  phase?: string;
+  userContraindications?: string[];
 }
 ```
 
 **Выходной контракт:**
 
 ```ts
-interface WeeklyProcessMILPOutput {
+interface WeeklyProcessOutput {
+  blockId: string;
+  splitName: string;                // ppl, upper_lower, full_body и т.д.
   sessions: {
     dayOfWeek: DayOfWeek;
-    time: string;
-    exercises: {
-      exerciseSlug: string;
-      sets: number;
-      order: number;
-    }[];
+    sessionType: 'full_body' | 'upper' | 'lower' | 'push' | 'pull' | 'legs';
+    exercises: { exerciseSlug: string; sets: number; repsPerSet: number; order: number }[];
     loadByMuscle: Record<string, number>;
-    durationMin: number;
+    totalTimeSec: number;
+    usedFallback?: boolean;
+    repsPerSet: number;
   }[];
-  restDays: number[];               // количество дней отдыха между сессиями
   totalWeeklyLoad: number;
+  weeklyVolumeByMuscle: Record<string, number>;
 }
 ```
+
+**Ключевое:** сплит и session types подбираются автоматически из матрицы `SPLIT_STRATEGIES`.
 
 ## 2. Правила модели
 
 1. Выбирать только упражнения, доступные по оборудованию и противопоказаниям.
 2. `forbidden` противопоказание = упражнение исключается из кандидатов.
-3. `not_recommended` = штраф в objective.
-4. `low_weight` = мягкий штраф в objective.
-5. Балансировать мышечные группы: минимум 1 упражнение на основные группы.
-6. Балансировать push/pull: разница не более 1 упражнения.
-7. Контролировать повторяемость: штраф за упражнения, которые были недавно.
+3. `not_recommended` = штраф в objective (×0.5).
+4. `low_weight` = мягкий штраф (×0.8).
+5. Фокус-группы получают минимум упражнений: chest/back/legs ≥ 2, shoulders/arms/core ≥ 1.
+6. Баланс push/pull: разница не более 1 упражнения.
+7. Контролировать повторяемость: штраф за упражнения из последних N сессий.
 8. Не выходить за лимит времени.
-9. Не превышать усталость по мышцам.
-10. Между тренировками соблюдать минимальный и максимальный отдых.
+9. Не превышать усталость по мышцам (FATIGUE_LIMIT = 3.0).
+10. Недельный объём отслеживается: мышцы ≥ max → deprioritized (×0.3), < min×0.5 → boosted (×1.3).
+11. Gender-aware: female → glutes/hamstrings ×1.3, male → chest/shoulders/lats ×1.2.
+12. Session-type-aware scoring: different SESSION_TARGETS и SESSION_DEPRIORITIZE per slot.
+13. Variable sets: compound (multi-muscle) → больше подходов, isolation → меньше.
+14. Goal → reps: strength 1-5, hypertrophy 6-12, endurance 15-25.
 
 ## 3. Metadata-слой
 
-Все числовые коэффициенты хранятся в JSONB-поле `metadata` у соответствующих сущностей.
-
-### 3.1 Exercise.metadata
+### 3.1 ExerciseMetadata
 
 ```ts
 {
-  complexityScore: number;        // 0..1
-  fatigueCost: number;            // 0..10
-  timeCostSec: number;            // 20..600
-  riskLevel: number;              // 0..1
-  jointStress: number;            // 0..10
-  primaryMuscleWeights: { slug: string; weight: number }[];   // weight 0.5..1.0
-  secondaryMuscleWeights: { slug: string; weight: number }[]; // weight 0.1..0.6
-  phaseAffinity: string[];        // accumulation | intensification | realization | deload | rehab | general_preparation
-  variationGroup: string;         // например: horizontal_push, vertical_pull, knee_dominant_squat
+  complexityScore?: number;
+  fatigueCost?: number;
+  timeCostSec?: number;
+  riskLevel?: number;
+  jointStress?: number;
+  primaryMuscleWeights?: { slug: string; weight: number }[];
+  secondaryMuscleWeights?: { slug: string; weight: number }[];
+  phaseAffinity?: string[];
+  variationGroup?: string;
 }
 ```
 
-### 3.2 User.metadata
+### 3.2 UserMetadata
 
 ```ts
 {
-  goal?: string | null;                      // strength | hypertrophy | endurance | fat_loss | general_fitness | mobility | rehab
-  trainingAgeMonths?: number | null;         // 0..240+
-  experienceLevel?: string | null;           // beginner | intermediate | advanced
-  recoveryCapacity?: number | null;          // 0..1
-  availableEquipment?: string[] | null;      // slug-коды Equipment
-  injuryHistory?: string[] | null;           // knee | lower_back | shoulder | neck | elbow | ankle
-  currentLimitations?: string[] | null;      // pain_knee | pain_back | limited_rom_shoulder | no_overhead_press
-  preferredExercises?: string[] | null;      // slug-коды упражнений
-  dislikedExercises?: string[] | null;       // slug-коды упражнений
+  goal?: string | null;
+  trainingAgeMonths?: number | null;
+  experienceLevel?: string | null;
+  recoveryCapacity?: number | null;
+  availableEquipment?: string[] | null;
+  injuryHistory?: string[] | null;
+  currentLimitations?: string[] | null;
+  preferredExercises?: string[] | null;
+  dislikedExercises?: string[] | null;
   preferredMovementPatterns?: string[] | null;
 }
 ```
 
-Все поля nullable. Если поле `null`, MILP использует дефолтное значение или пропускает ограничение.
-
-**Fallback при null:**
-- `availableEquipment = null` -> использовать только bodyweight-упражнения или запросить у пользователя.
-- `goal = null` -> использовать `general_fitness`.
-- `recoveryCapacity = null` -> использовать 0.5.
-- `experienceLevel = null` -> использовать `beginner`.
-
-### 3.3 WorkoutTemplate.metadata
+### 3.3 TrainingBlockMetadata
 
 ```ts
 {
-  sessionDurationMin?: number;    // лимит времени на тренировку, 20..120
-  trainingGoal?: string;          // цель данной тренировки
-  expectedLoad?: number;          // ожидаемая суммарная нагрузка
-  recoveryWindowDays?: number;    // дней до следующей тренировки
-  blockType?: string;             // heavy | moderate | light | recovery | technique
-  phase?: string;                 // accumulation | intensification | realization | deload | transition
+  phase?: string;
+  weekType?: string;
+  splitName?: string;
+  experienceLevel?: string;
+  goal?: string;
+  gender?: string;
+  minRestDays?: number;
+  maxRestDays?: number;
+  weeklyLoadLimit?: number;
+  consecutiveTrainingDaysLimit?: number;
 }
 ```
 
-`sessionDurationMin` хранится здесь, а не в `User`, потому что это параметр конкретной тренировки, а не свойство пользователя.
-
-### 3.4 TrainingBlock.metadata
-
-```ts
-{
-  phase?: string;                         // accumulation | intensification | realization | deload | transition
-  weekType?: string;                      // base | build | taper | recovery
-  minRestDays?: number;                   // минимум дней отдыха
-  maxRestDays?: number;                   // максимум дней отдыха
-  weeklyLoadLimit?: number;               // лимит нагрузки на неделю
-  consecutiveTrainingDaysLimit?: number;  // максимум подряд идущих тренировочных дней
-}
-```
-
-### 3.5 WorkoutSession.metadata
+### 3.4 WorkoutSessionMetadata
 
 ```ts
 {
   previousSessionId?: string;
   nextSessionId?: string;
   sessionDurationMin?: number;
+  sessionType?: string;
+  repsPerSet?: number;
   sessionLoadByMuscle?: { slug: string; load: number }[];
   mandatoryMuscles?: string[];
   forbiddenExercises?: string[];
@@ -181,50 +181,15 @@ interface WeeklyProcessMILPOutput {
 }
 ```
 
-## 4. Перевод категорий в числа
-
-### 4.1 ContraindicationSeverity
+## 4. Severity маппинг
 
 ```
-k(forbidden)        = 0.0  -> упражнение исключается из множества кандидатов
-k(not_recommended)  = 0.5  -> штраф в objective: weight *= k(severity)
-k(low_weight)       = 0.8  -> мягкий штраф в objective: weight *= k(severity)
+k(forbidden)        = 0.0  → упражнение исключается
+k(not_recommended)  = 0.5  → weight *= 0.5
+k(low_weight)       = 0.8  → weight *= 0.8
 ```
 
-### 4.2 Difficulty
-
-```
-k(beginner)     = 1
-k(intermediate) = 2
-k(advanced)     = 3
-```
-
-### 4.3 RecoveryCapacity
-
-```
-диапазон: 0..1
-null -> дефолт 0.5
-```
-
-### 4.4 Readiness / Soreness / Pain
-
-```
-readiness: 0..10
-soreness: 0..10
-pain: 0..10
-```
-
-## 5. Типы ограничений
-
-- **hard constraint** — нарушение недопустимо. Реализуется как ограничение ILP.
-- **soft constraint** — нарушение допустимо с штрафом. Реализуется как слагаемое в objective.
-- **preference** — влияет на вес упражнения в objective.
-- **progression** — задаёт рост или спад нагрузки между тренировками.
-- **recovery** — задаёт отдых между сессиями.
-
-## 6. Стартовые priors из hybrid_model.ipynb
-
-Использовать как дефолтные значения до появления собственной статистики:
+## 5. Priors (из hybrid_model.ipynb)
 
 ```
 alpha_1 = 1.5    вес сложности
@@ -234,40 +199,51 @@ delta   = 0.2    вес разнообразия
 epsilon = 0.2    вес штрафа усталости
 theta   = 1.5    порог усталости
 lambda  = 0.345  скорость восстановления
-diversity_window = 4  тренировки
+diversity_window = 4
 ```
 
-Матрица интенсивности `I_{e,m}`:
-- основная мышца: 1.0
-- выраженный синергист: 0.5
-- слабый синергист: 0.3
+## 6. Контракт между Workout MILP и Weekly Process MILP
 
-## 7. Структура внедрения
-
-1. **Workout MILP** — сервис, строящий состав одной тренировки.
-2. **Weekly Process MILP** — сервис, строящий расписание на неделю.
-3. **Adaptive Update Layer** — сервис, обновляющий priors по истории выполнения.
-
-## 8. Контракт между Workout MILP и Weekly Process MILP
-
-Weekly Process MILP вызывает Workout MILP для каждой тренировки в неделе.
+Weekly Process вызывает Workout MILP для каждой тренировки.
 
 **Что Weekly передает в Workout:**
-- `sessionDurationMin` из `WorkoutTemplate.metadata`
-- `phase` из `TrainingBlock.metadata`
-- `fatigueByMuscle` — текущая усталость, пересчитанная после предыдущей тренировки
-- `usedExercises` — упражнения, уже использованные в неделе
-- `availableEquipment` из `User.metadata`
-- `mandatoryMuscles` из `TrainingBlock.targetMuscles`
+- `sessionDurationMin` — из входного параметра
+- `experienceLevel`, `goal`, `gender` — из входных параметров
+- `compoundSets`, `isolationSets` — auto-derived из level + goal
+- `focusMuscles` / `specificMuscles` — из `SESSION_MUSCLE_FOCUS[slot]`
+- `mandatoryMuscles` — из primary muscles слота + gender expansions
+- `phase` — из входных параметров
+- `fatigueByMuscle` — пересчитанная после предыдущей тренировки
+- `usedExercises` — упражнения из уже сгенерированных сессий недели
+- `availableEquipment` — из входных параметров
+- `weeklyVolumeByMuscle` — накопленный объём за неделю
 
 **Что Workout возвращает в Weekly:**
 - `loadByMuscle` — для обновления усталости
 - `totalTimeSec` — для контроля лимита времени
+- `exercises` с `sets` и `repsPerSet` — для записи в WorkoutSession
 
-**Единая метрика нагрузки:**
-
+**Метрика нагрузки:**
 ```
-load(e, m) = fatigueCost(e) * primaryMuscleWeight(e, m)
+load(e, m) = fatigueCost(e) × primaryMuscleWeight(e, m)
 ```
 
-где `fatigueCost` берётся из `Exercise.metadata.fatigueCost`, а `primaryMuscleWeight` из `Exercise.metadata.primaryMuscleWeights`.
+## 7. Split Selection
+
+Матрица `SPLIT_STRATEGIES`:
+
+| Key | Split | Sessions |
+|-----|-------|----------|
+| `2-beginner` | full_body | FB, FB |
+| `2-intermediate` | upper_lower | Upper, Lower |
+| `3-beginner` | full_body | FB, FB, FB |
+| `3-intermediate` | ppl | Push, Pull, Legs |
+| `4-beginner` | upper_lower | Upper, Lower, FB, FB |
+| `4-intermediate` | upper_lower | Upper, Lower, Upper, Lower |
+| `4-advanced` | ppl_plus | Push, Pull, Legs, FB |
+| `5-intermediate` | ppl_ul | Push, Pull, Legs, Upper, Lower |
+| `5-advanced` | ppl_pp | Push, Pull, Legs, Push, Pull |
+| `6-*` | ppl_ppl | Push, Pull, Legs, Push, Pull, Legs |
+
+Goal modifiers: `rehab`/`mobility` → все FB; `weight_loss`/`endurance` → до половины сессий FB.
+Experience caps: beginner ≤ 3-4 days, intermediate ≤ 5, advanced ≤ 6.

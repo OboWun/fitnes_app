@@ -13,6 +13,8 @@ import { WorkoutTemplatesModule } from './workout-templates/workout-templates.mo
 import { TrainingBlocksModule } from './training-blocks/training-blocks.module.js';
 import { WorkoutSessionsModule } from './workout-sessions/workout-sessions.module.js';
 import { WorkoutMilpModule } from './workout-milp/workout-milp.module.js';
+import { WorkoutDialogModule } from './workout-dialog/workout-dialog.module.js';
+import { EquipmentPresetsModule } from './equipment-presets/equipment-presets.module.js';
 
 @Module({
   imports: [
@@ -28,6 +30,8 @@ import { WorkoutMilpModule } from './workout-milp/workout-milp.module.js';
     TrainingBlocksModule,
     WorkoutSessionsModule,
     WorkoutMilpModule,
+    WorkoutDialogModule,
+    EquipmentPresetsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

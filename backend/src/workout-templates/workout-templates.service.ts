@@ -35,7 +35,10 @@ export class WorkoutTemplatesService {
     return templates.map((t) => this.toTemplateResponseDto(t));
   }
 
-  async findOne(userId: string, id: string): Promise<WorkoutTemplateResponseDto> {
+  async findOne(
+    userId: string,
+    id: string,
+  ): Promise<WorkoutTemplateResponseDto> {
     const template = await this.templatesRepository.findById(id);
     if (!template || template.userId !== userId) {
       throw new NotFoundException(`Workout template with id "${id}" not found`);
@@ -156,11 +159,17 @@ export class WorkoutTemplatesService {
     if (dto.dayOfWeek !== undefined) updateData.dayOfWeek = dto.dayOfWeek;
     if (dto.time !== undefined) updateData.time = dto.time;
 
-    const updated = await this.scheduledRepository.update(scheduleId, updateData);
+    const updated = await this.scheduledRepository.update(
+      scheduleId,
+      updateData,
+    );
     return this.toScheduledResponseDto(updated!);
   }
 
-  async deleteScheduledWorkout(userId: string, scheduleId: string): Promise<void> {
+  async deleteScheduledWorkout(
+    userId: string,
+    scheduleId: string,
+  ): Promise<void> {
     const existing = await this.scheduledRepository.findById(scheduleId);
     if (!existing || existing.userId !== userId) {
       throw new NotFoundException(

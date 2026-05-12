@@ -1,6 +1,10 @@
 export interface TrainingBlockMetadata {
   phase?: string;
   weekType?: string;
+  splitName?: string;
+  experienceLevel?: string;
+  goal?: string;
+  gender?: string;
   minRestDays?: number;
   maxRestDays?: number;
   weeklyLoadLimit?: number;

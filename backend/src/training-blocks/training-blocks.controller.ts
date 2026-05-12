@@ -37,7 +37,9 @@ export class TrainingBlocksController {
   @Get()
   @ApiOperation({ summary: 'Get all training blocks for current user' })
   @ApiOkResponse({ type: [TrainingBlockResponseDto] })
-  async findAll(@CurrentUser() user: User): Promise<TrainingBlockResponseDto[]> {
+  async findAll(
+    @CurrentUser() user: User,
+  ): Promise<TrainingBlockResponseDto[]> {
     return this.service.findAll(user.id);
   }
 
@@ -80,7 +82,10 @@ export class TrainingBlocksController {
   @ApiOperation({ summary: 'Delete a training block' })
   @ApiParam({ name: 'id' })
   @ApiNoContentResponse()
-  async delete(@CurrentUser() user: User, @Param('id') id: string): Promise<void> {
+  async delete(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+  ): Promise<void> {
     await this.service.delete(user.id, id);
   }
 }

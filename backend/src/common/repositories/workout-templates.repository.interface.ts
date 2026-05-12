@@ -28,8 +28,13 @@ export interface IWorkoutTemplatesRepository {
 export interface IScheduledWorkoutsRepository {
   findByUserId(userId: string): Promise<ScheduledWorkout[]>;
   findById(id: string): Promise<ScheduledWorkout | undefined>;
-  findByUserIdAndDay(userId: string, dayOfWeek: string): Promise<ScheduledWorkout[]>;
-  create(data: Omit<ScheduledWorkout, 'id' | 'createdAt'>): Promise<ScheduledWorkout>;
+  findByUserIdAndDay(
+    userId: string,
+    dayOfWeek: string,
+  ): Promise<ScheduledWorkout[]>;
+  create(
+    data: Omit<ScheduledWorkout, 'id' | 'createdAt'>,
+  ): Promise<ScheduledWorkout>;
   update(
     id: string,
     data: Partial<Omit<ScheduledWorkout, 'id' | 'userId' | 'createdAt'>>,

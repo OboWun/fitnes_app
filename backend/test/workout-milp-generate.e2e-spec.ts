@@ -18,7 +18,9 @@ describe('WorkoutMILP /generate (e2e)', () => {
     }).compile();
 
     app = moduleFixture.createNestApplication();
-    app.useGlobalPipes(new ValidationPipe({ transform: true, whitelist: true }));
+    app.useGlobalPipes(
+      new ValidationPipe({ transform: true, whitelist: true }),
+    );
 
     jwtService = app.get(JwtService);
     validToken = jwtService.sign({
@@ -34,18 +36,16 @@ describe('WorkoutMILP /generate (e2e)', () => {
   });
 
   describe('POST /workout-milp/generate', () => {
-    it('chest/back + barbell/dumbbell → should cover chest & back with proper time', async () => {
+    it('chest/back hypertrophy → reps 6-12, ≥3 exercises, chest & back covered', async () => {
       const res = await request(app.getHttpServer())
         .post('/workout-milp/generate')
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           sessionDurationMin: 60,
-          exerciseCount: 5,
-          setsPerExercise: 3,
-          restBetweenSetsSec: 90,
+          experienceLevel: 'intermediate',
+          goal: 'hypertrophy',
+          focusMuscles: ['chest', 'back'],
           availableEquipment: ['barbell', 'dumbbell'],
-          phase: 'accumulation',
-          mandatoryMuscles: ['chest', 'back'],
         });
 
       console.log('Status:', res.status);
@@ -56,31 +56,107 @@ describe('WorkoutMILP /generate (e2e)', () => {
       const body = res.body;
       expect(body.exercises).toBeDefined();
       expect(body.exercises.length).toBeGreaterThanOrEqual(3);
-      expect(body.exercises.length).toBeLessThanOrEqual(5);
-      expect(body.totalTimeSec).toBeGreaterThan(0);
-      expect(body.usedFallback).toBeDefined();
-      expect(body.partialCoverage).toBeDefined();
 
       const loadByMuscle = body.totalLoadByMuscle ?? {};
-      const chestOrBackCovered =
-        'chest' in loadByMuscle ||
-        'lats' in loadByMuscle ||
-        'upper_back' in loadByMuscle ||
-        'traps' in loadByMuscle;
-      expect(chestOrBackCovered).toBe(true);
+      expect('chest' in loadByMuscle).toBe(true);
+
+      for (const ex of body.exercises) {
+        expect(ex.repsPerSet).toBeGreaterThanOrEqual(6);
+        expect(ex.repsPerSet).toBeLessThanOrEqual(12);
+      }
+
+      expect(body.totalTimeSec).toBeGreaterThan(0);
+      expect(body.usedFallback).toBeDefined();
     }, 30000);
 
-    it('lower body (quads/hamstrings) → should not bias toward chest/back', async () => {
+    it('strength goal → reps 1-5, longer rest', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/workout-milp/generate')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          sessionDurationMin: 60,
+          experienceLevel: 'intermediate',
+          goal: 'strength',
+          focusMuscles: ['chest', 'arms'],
+          availableEquipment: ['barbell', 'dumbbell'],
+        });
+
+      console.log('Status:', res.status);
+      console.log('Body:', JSON.stringify(res.body, null, 2));
+
+      expect(res.status).toBe(201);
+
+      const body = res.body;
+      expect(body.exercises).toBeDefined();
+
+      for (const ex of body.exercises) {
+        expect(ex.repsPerSet).toBeGreaterThanOrEqual(1);
+        expect(ex.repsPerSet).toBeLessThanOrEqual(5);
+      }
+    }, 30000);
+
+    it('endurance goal → reps 15-25', async () => {
       const res = await request(app.getHttpServer())
         .post('/workout-milp/generate')
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           sessionDurationMin: 45,
-          exerciseCount: 4,
-          setsPerExercise: 4,
-          restBetweenSetsSec: 120,
+          experienceLevel: 'beginner',
+          goal: 'endurance',
+          focusMuscles: ['legs'],
           availableEquipment: ['barbell', 'dumbbell', 'cable'],
-          mandatoryMuscles: ['quads', 'hamstrings', 'glutes'],
+        });
+
+      console.log('Status:', res.status);
+      console.log('Body:', JSON.stringify(res.body, null, 2));
+
+      expect(res.status).toBe(201);
+
+      const body = res.body;
+      expect(body.exercises).toBeDefined();
+
+      for (const ex of body.exercises) {
+        expect(ex.repsPerSet).toBeGreaterThanOrEqual(15);
+        expect(ex.repsPerSet).toBeLessThanOrEqual(25);
+      }
+
+      const loadByMuscle = body.totalLoadByMuscle ?? {};
+      const lowerCovered =
+        'quads' in loadByMuscle ||
+        'hamstrings' in loadByMuscle ||
+        'glutes' in loadByMuscle;
+      expect(lowerCovered).toBe(true);
+    }, 30000);
+
+    it('empty equipment → bodyweight exercises only', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/workout-milp/generate')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          sessionDurationMin: 30,
+          experienceLevel: 'beginner',
+          goal: 'general_health',
+          focusMuscles: ['chest', 'arms'],
+          availableEquipment: [],
+        });
+
+      expect(res.status).toBe(201);
+
+      const body = res.body;
+      expect(body.exercises).toBeDefined();
+    }, 30000);
+
+    it('specificMuscles → should prioritize specific muscles', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/workout-milp/generate')
+        .set('Authorization', `Bearer ${validToken}`)
+        .send({
+          sessionDurationMin: 60,
+          experienceLevel: 'advanced',
+          goal: 'hypertrophy',
+          focusMuscles: ['back'],
+          specificMuscles: ['lats', 'rear_delts'],
+          availableEquipment: ['barbell', 'dumbbell', 'cable'],
         });
 
       console.log('Status:', res.status);
@@ -93,66 +169,31 @@ describe('WorkoutMILP /generate (e2e)', () => {
       expect(body.exercises.length).toBeGreaterThanOrEqual(2);
 
       const loadByMuscle = body.totalLoadByMuscle ?? {};
-      const lowerCovered =
-        'quads' in loadByMuscle ||
-        'hamstrings' in loadByMuscle ||
-        'glutes' in loadByMuscle;
-      expect(lowerCovered).toBe(true);
+      const backCovered =
+        'lats' in loadByMuscle || 'upper_back' in loadByMuscle;
+      expect(backCovered).toBe(true);
     }, 30000);
 
-    it('empty equipment → should return only bodyweight exercises', async () => {
-      const res = await request(app.getHttpServer())
-        .post('/workout-milp/generate')
-        .set('Authorization', `Bearer ${validToken}`)
-        .send({
-          sessionDurationMin: 30,
-          exerciseCount: 4,
-          setsPerExercise: 3,
-          availableEquipment: [],
-          mandatoryMuscles: ['chest', 'triceps'],
-        });
-
-      console.log('Status:', res.status);
-      console.log('Body:', JSON.stringify(res.body, null, 2));
-
-      expect(res.status).toBe(201);
-
-      const body = res.body;
-      expect(body.exercises).toBeDefined();
-    }, 30000);
-
-    it('time calculation → totalTimeSec should reflect sets × timeCostSec + rest', async () => {
+    it('time calculation → totalTimeSec should be realistic', async () => {
       const res = await request(app.getHttpServer())
         .post('/workout-milp/generate')
         .set('Authorization', `Bearer ${validToken}`)
         .send({
           sessionDurationMin: 60,
-          exerciseCount: 3,
-          setsPerExercise: 3,
-          restBetweenSetsSec: 90,
+          experienceLevel: 'intermediate',
+          goal: 'hypertrophy',
+          focusMuscles: ['chest'],
           availableEquipment: ['barbell', 'dumbbell'],
-          mandatoryMuscles: ['chest'],
         });
-
-      console.log('Status:', res.status);
-      console.log('Body:', JSON.stringify(res.body, null, 2));
 
       expect(res.status).toBe(201);
 
       const body = res.body;
+      expect(body.totalTimeSec).toBeGreaterThan(0);
+      expect(body.totalTimeSec).toBeLessThanOrEqual(60 * 60);
+
       const exerciseCount = body.exercises?.length ?? 0;
-      const sets = 3;
-      const restSec = 90;
-      const defaultPerSetTime = 40;
-
-      const expectedMinPerExercise = defaultPerSetTime * sets;
-      const expectedMaxPerExercise = 300 * sets + restSec * (sets - 1);
-
-      const expectedMin = exerciseCount * expectedMinPerExercise;
-      const expectedMax = exerciseCount * expectedMaxPerExercise;
-
-      expect(body.totalTimeSec).toBeGreaterThanOrEqual(expectedMin);
-      expect(body.totalTimeSec).toBeLessThanOrEqual(expectedMax);
+      expect(exerciseCount).toBeGreaterThanOrEqual(1);
     }, 30000);
   });
 });

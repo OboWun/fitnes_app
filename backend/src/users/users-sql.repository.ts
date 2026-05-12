@@ -7,6 +7,7 @@ interface UserRow {
   id: string;
   device_id: string;
   name: string | null;
+  gender: string | null;
   weight: number | null;
   height: number | null;
   age: number | null;
@@ -19,6 +20,7 @@ function toUser(row: UserRow): User {
     id: row.id,
     deviceId: row.device_id,
     name: row.name ?? undefined,
+    gender: (row.gender as 'male' | 'female') ?? undefined,
     weight: row.weight != null ? Number(row.weight) : undefined,
     height: row.height != null ? Number(row.height) : undefined,
     age: row.age ?? undefined,
@@ -33,7 +35,7 @@ export class UsersSqlRepository implements IUsersRepository {
 
   async findByDeviceId(deviceId: string): Promise<User | undefined> {
     const row = await this.db.queryOne<UserRow>(
-      'SELECT id, device_id, name, weight, height, age, created_at, metadata FROM users WHERE device_id = $1',
+      'SELECT id, device_id, name, gender, weight, height, age, created_at, metadata FROM users WHERE device_id = $1',
       [deviceId],
     );
     if (!row) return undefined;
@@ -44,7 +46,7 @@ export class UsersSqlRepository implements IUsersRepository {
 
   async findById(id: string): Promise<User | undefined> {
     const row = await this.db.queryOne<UserRow>(
-      'SELECT id, device_id, name, weight, height, age, created_at, metadata FROM users WHERE id = $1',
+      'SELECT id, device_id, name, gender, weight, height, age, created_at, metadata FROM users WHERE id = $1',
       [id],
     );
     if (!row) return undefined;
@@ -59,7 +61,7 @@ export class UsersSqlRepository implements IUsersRepository {
     const row = await this.db.queryOne<UserRow>(
       `INSERT INTO users (id, device_id, created_at)
        VALUES ($1, $2, NOW())
-       RETURNING id, device_id, name, weight, height, age, created_at, metadata`,
+       RETURNING id, device_id, name, gender, weight, height, age, created_at, metadata`,
       [id, deviceId],
     );
     return toUser(row!);
@@ -70,15 +72,23 @@ export class UsersSqlRepository implements IUsersRepository {
     data: Partial<Omit<User, 'id' | 'deviceId' | 'createdAt'>>,
   ): Promise<User | undefined> {
     const existing = await this.db.queryOne<UserRow>(
-      'SELECT id, device_id, name, weight, height, age, created_at, metadata FROM users WHERE id = $1',
+      'SELECT id, device_id, name, gender, weight, height, age, created_at, metadata FROM users WHERE id = $1',
       [id],
     );
     if (!existing) return undefined;
 
     await this.db.transaction(async (client) => {
       await client.query(
-        `UPDATE users SET name = $2, weight = $3, height = $4, age = $5, metadata = COALESCE($6, metadata) WHERE id = $1`,
-        [id, data.name ?? null, data.weight ?? null, data.height ?? null, data.age ?? null, data.metadata ?? null],
+        `UPDATE users SET name = $2, gender = $3, weight = $4, height = $5, age = $6, metadata = COALESCE($7, metadata) WHERE id = $1`,
+        [
+          id,
+          data.name ?? null,
+          (data as Record<string, unknown>).gender ?? null,
+          data.weight ?? null,
+          data.height ?? null,
+          data.age ?? null,
+          data.metadata ?? null,
+        ],
       );
 
       if (data.contraindications !== undefined) {
@@ -100,7 +110,7 @@ export class UsersSqlRepository implements IUsersRepository {
     });
 
     const row = await this.db.queryOne<UserRow>(
-      'SELECT id, device_id, name, weight, height, age, created_at, metadata FROM users WHERE id = $1',
+      'SELECT id, device_id, name, gender, weight, height, age, created_at, metadata FROM users WHERE id = $1',
       [id],
     );
     if (!row) return undefined;

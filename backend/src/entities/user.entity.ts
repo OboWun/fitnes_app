@@ -9,12 +9,14 @@ export interface UserMetadata {
   preferredExercises?: string[] | null;
   dislikedExercises?: string[] | null;
   preferredMovementPatterns?: string[] | null;
+  defaultEquipmentPresetId?: string | null;
 }
 
 export interface User {
   id: string;
   deviceId: string;
   name?: string;
+  gender?: 'male' | 'female';
   weight?: number;
   height?: number;
   age?: number;

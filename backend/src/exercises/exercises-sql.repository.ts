@@ -164,9 +164,10 @@ export class ExercisesSqlRepository implements IExercisesRepository {
     return { data: exercises, total };
   }
 
-  private buildWhere(
-    filters?: ExerciseFilterParams,
-  ): { where: string; params: unknown[] } {
+  private buildWhere(filters?: ExerciseFilterParams): {
+    where: string;
+    params: unknown[];
+  } {
     const conditions: string[] = [];
     const params: unknown[] = [];
     let idx = 1;
@@ -219,52 +220,63 @@ export class ExercisesSqlRepository implements IExercisesRepository {
   }
 
   private async toExercise(row: ExerciseRow): Promise<Exercise> {
-    const [targetMuscles, secondaryMuscles, bodyParts, equipments, contraindications] =
-      await Promise.all([
-        this.getRelations(
-          'exercise_target_muscles etm JOIN muscles m ON m.id = etm.muscle_id',
-          'm.name, m.slug',
-          'etm.exercise_id',
-          row.slug,
-        ),
-        this.getRelations(
-          'exercise_secondary_muscles esm JOIN muscles m ON m.id = esm.muscle_id',
-          'm.name, m.slug',
-          'esm.exercise_id',
-          row.slug,
-        ),
-        this.getRelations(
-          'exercise_body_parts ebp JOIN bodyparts bp ON bp.id = ebp.bodypart_id',
-          'bp.name, bp.slug',
-          'ebp.exercise_id',
-          row.slug,
-        ),
-        this.getRelations(
-          'exercise_equipments ee JOIN equipments eq ON eq.id = ee.equipment_id',
-          'eq.name, eq.slug',
-          'ee.exercise_id',
-          row.slug,
-        ),
-        this.getContraindications(row.slug),
-      ]);
+    const [
+      targetMuscles,
+      secondaryMuscles,
+      bodyParts,
+      equipments,
+      contraindications,
+    ] = await Promise.all([
+      this.getRelations(
+        'exercise_target_muscles etm JOIN muscles m ON m.id = etm.muscle_id',
+        'm.name, m.slug',
+        'etm.exercise_id',
+        row.slug,
+      ),
+      this.getRelations(
+        'exercise_secondary_muscles esm JOIN muscles m ON m.id = esm.muscle_id',
+        'm.name, m.slug',
+        'esm.exercise_id',
+        row.slug,
+      ),
+      this.getRelations(
+        'exercise_body_parts ebp JOIN bodyparts bp ON bp.id = ebp.bodypart_id',
+        'bp.name, bp.slug',
+        'ebp.exercise_id',
+        row.slug,
+      ),
+      this.getRelations(
+        'exercise_equipments ee JOIN equipments eq ON eq.id = ee.equipment_id',
+        'eq.name, eq.slug',
+        'ee.exercise_id',
+        row.slug,
+      ),
+      this.getContraindications(row.slug),
+    ]);
 
     return {
       exerciseId: row.exercise_id,
       name: row.name,
       slug: row.slug,
       gifUrl: row.gif_url,
-      targetMuscles: targetMuscles.map((r: { name: string; slug: string }) => r.slug),
+      targetMuscles: targetMuscles.map(
+        (r: { name: string; slug: string }) => r.slug,
+      ),
       bodyParts: bodyParts.map((r: { name: string; slug: string }) => r.slug),
       equipments: equipments.map((r: { name: string; slug: string }) => r.slug),
-      secondaryMuscles: secondaryMuscles.map((r: { name: string; slug: string }) => r.slug) || undefined,
+      secondaryMuscles:
+        secondaryMuscles.map((r: { name: string; slug: string }) => r.slug) ||
+        undefined,
       instructions: row.instructions || [],
       contraindications: contraindications || undefined,
       alias: row.alias || undefined,
-      exerciseType: (row.exercise_type as Exercise['exerciseType']) || undefined,
+      exerciseType:
+        (row.exercise_type as Exercise['exerciseType']) || undefined,
       description: row.description || undefined,
       confidence: row.confidence !== null ? Number(row.confidence) : undefined,
       difficulty: (row.difficulty as Exercise['difficulty']) || undefined,
-      movementPattern: (row.movement_pattern as Exercise['movementPattern']) || undefined,
+      movementPattern:
+        (row.movement_pattern as Exercise['movementPattern']) || undefined,
       variations: row.variations || undefined,
       metadata: row.metadata || undefined,
     };
@@ -286,7 +298,9 @@ export class ExercisesSqlRepository implements IExercisesRepository {
 
   private async getContraindications(
     slug: string,
-  ): Promise<{ slug: string; severity: 'forbidden' | 'not_recommended' | 'low_weight' }[]> {
+  ): Promise<
+    { slug: string; severity: 'forbidden' | 'not_recommended' | 'low_weight' }[]
+  > {
     return this.db.query<{
       slug: string;
       severity: 'forbidden' | 'not_recommended' | 'low_weight';
@@ -299,7 +313,10 @@ export class ExercisesSqlRepository implements IExercisesRepository {
     );
   }
 
-  async findForMILP(page: number, limit: number): Promise<PaginatedResult<ExerciseMILPData>> {
+  async findForMILP(
+    page: number,
+    limit: number,
+  ): Promise<PaginatedResult<ExerciseMILPData>> {
     const offset = (page - 1) * limit;
 
     const countRow = await this.db.queryOne<{ total: string }>(

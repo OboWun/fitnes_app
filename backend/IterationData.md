@@ -2,180 +2,56 @@
 
 Этот документ описывает, какие данные нужно вставлять в каждую итерацию MILP-внедрения. Формулировки даны как практический фитнес-контекст и частично опираются на `backend/refs/hybrid_model.ipynb`.
 
-## Итерация 1: Обогатить данные для одной тренировки
+## Итерация 1: Обогатить данные для одной тренировки — ✅ ЗАВЕРШЕНА
 
-### Какие данные нужны
+**Статус:** Реализовано в `workout-milp.service.ts`.
 
-- `Exercise.metadata.complexityScore` - сложность упражнения для выбора уровня нагрузки.
-- `Exercise.metadata.fatigueCost` - утомляемость упражнения для штрафа в objective.
-- `Exercise.metadata.timeCostSec` - реальная стоимость упражнения по времени.
-- `Exercise.metadata.riskLevel` - риск травмоопасности и технической ошибки.
-- `Exercise.metadata.jointStress` - нагрузка на суставы и связки.
-- `Exercise.metadata.primaryMuscleWeights` - основная мышечная нагрузка.
-- `Exercise.metadata.secondaryMuscleWeights` - вспомогательная мышечная нагрузка.
-- `Exercise.metadata.phaseAffinity` - уместность упражнения в фазе периода.
-- `Exercise.metadata.variationGroup` - группа заменяемости.
-- `User.metadata.goal` - цель пользователя для ранжирования упражнений.
-- `User.metadata.availableEquipment` - доступное оборудование, если оно не фиксируется отдельно.
-- `User.metadata.trainingAgeMonths` - стаж для адаптации сложности.
-- `User.metadata.experienceLevel` - уровень подготовки для выбора упражнений.
-- `User.metadata.recoveryCapacity` - скорость восстановления для штрафов усталости.
-- `User.metadata.injuryHistory` - история травм для фильтрации риска.
-- `User.metadata.currentLimitations` - текущие ограничения для hard/soft constraints.
-- `User.metadata.preferredExercises` - предпочтения для увеличения веса упражнения.
-- `User.metadata.dislikedExercises` - нежелательные упражнения для снижения веса.
+**Что сделано:**
+- Все `Exercise.metadata` поля заполнены (complexityScore, fatigueCost, timeCostSec, riskLevel, jointStress, primaryMuscleWeights, secondaryMuscleWeights, phaseAffinity, variationGroup)
+- `User.metadata.goal`, `experienceLevel`, `availableEquipment` используются при генерации
+- LP solver (`javascript-lp-solver`) + 4-фазный greedy fallback
+- Goal → rep ranges (strength 1-5, hypertrophy 6-12, endurance 15-25)
+- Experience → exercise count, sets, rest
+- Variable sets: compound (3-5) vs isolation (2-3)
+- Gender-aware weights (female: glutes/hamstrings ×1.3, male: chest/shoulders ×1.2)
+- Weekly volume tracking: overtrained muscles deprioritized
+- Session-type detection: upper/lower/push/pull/full_body
+- Focus group minimums (chest/back/legs ≥ 2 exercises)
+- 6/6 e2e tests passing
 
-### Что брать из `hybrid_model.ipynb`
+## Итерация 2: Обогатить данные для недельного процесса — ✅ ЗАВЕРШЕНА
 
-- `alpha_1 = 1.5` - вес сложности.
-- `alpha_2 = 0.5` - вес частоты использования.
-- `alpha_3 = 2.0` - вес аффинности.
-- `delta = 0.2` - вес разнообразия.
-- `epsilon = 0.2` - вес штрафа усталости.
-- `theta = 1.5` - порог усталости.
-- `lambda = 0.345` - восстановление.
-- `V_e(t) = min(1, Δt_e / 4)` - функция разнообразия.
-- `P_e(t)` - функция штрафа за усталость.
-- `I_{e,m}` - матрица интенсивности с базовыми весами `1.0 / 0.5 / 0.3`.
+**Статус:** Реализовано в `weekly-process-milp.service.ts`.
 
-### Как это использовать в MILP
+**Что сделано:**
+- `TrainingBlock` + `WorkoutSession` entities с metadata
+- Split selection matrix (`SPLIT_STRATEGIES`): trainingCount × experienceLevel → Full Body / Upper-Lower / PPL
+- Goal modifiers: weight_loss/endurance/rehab/mobility → Full Body bias
+- `SESSION_MUSCLE_FOCUS`: primary/secondary muscles per session type (push/pull/legs/upper/lower/full_body)
+- Per-session volume distribution from `MUSCLE_WEEKLY_VOLUME_TARGETS`
+- Cross-session volume tracking (accumulatedVolume)
+- Fatigue decay between days (λ=0.345)
+- Exercise diversification across sessions within the week
+- Gender-aware mandatory muscles (female: extra glutes/hamstrings in lower sessions)
+- Auto-derived compoundSets/isolationSets from experience + goal
+- `POST /workout-milp/weekly-plan` endpoint with auto split selection
 
-- Эти данные идут в `Workout MILP`.
-- `sessionDurationMin` передается как входной параметр генерации тренировки, а не как поле `User`.
-- Если `forbidden`, упражнение исключается.
-- Если `not_recommended`, упражнение штрафуется.
-- Если `low_weight`, упражнение остается доступным с пониженным весом.
+## Итерация 3: Замена существующей тренировки — ⏳ НЕ НАЧАТА
 
-### Ожидаемый результат
+**Что нужно:** `WorkoutSession.metadata` (previousSessionId, nextSessionId, sessionLoadByMuscle, mandatoryMuscles, forbiddenExercises, allowedTimeDeviationMin, allowedLoadDeviation). Логика recency, similarity, fatigue-aware replacement.
 
-Система выбирает упражнения и число подходов с учетом цели, времени, оборудования, противопоказаний и текущего состояния пользователя.
+## Итерация 4: Зафиксировать числовые коэффициенты — ✅ ЗАВЕРШЕНА
 
-## Итерация 2: Обогатить данные для недельного процесса
+**Статус:** Все коэффициенты из hybrid_model.ipynb реализованы как константы в `workout-milp.service.ts`.
 
-### Какие данные нужны
+**Что сделано:**
+- α₁=1.5, α₂=0.5, α₃=2.0, δ=0.2, ε=0.2, θ=1.5, λ=0.345, diversity_window=4
+- Severity маппинг: forbidden=0.0, not_recommended=0.5, low_weight=0.8
+- GOAL_CONFIG с restSec, setsMultiplier, exerciseTypeBonus/Penalty
+- MUSCLE_WEEKLY_VOLUME_TARGETS для ~19 мышц (min/max weekly sets)
+- EXPERIENCE_PRESETS с weeklyVolumeScale (beginner=0.6, intermediate=1.0, advanced=1.4)
+- SETS_BY_ROLE + SETS_GOAL_MODIFIER для variable sets
 
-- `TrainingBlock.type` - тип недели или блока.
-- `TrainingBlock.index` - порядковый номер блока.
-- `TrainingBlock.durationWeeks` - длительность блока.
-- `TrainingBlock.goal` - цель периода.
-- `TrainingBlock.targetMuscles` - приоритетные мышцы периода.
-- `TrainingBlock.metadata.phase` - фаза периода.
-- `TrainingBlock.metadata.minRestDays` - минимальный отдых.
-- `TrainingBlock.metadata.maxRestDays` - максимальный отдых.
-- `TrainingBlock.metadata.weeklyLoadLimit` - лимит нагрузки на неделю.
-- `TrainingBlock.metadata.consecutiveTrainingDaysLimit` - лимит тренировок подряд.
-- `WorkoutSession.dayOfWeek` - день недели.
-- `WorkoutSession.status` - статус планирования или выполнения.
-- `WorkoutSession.metadata.sessionLoadByMuscle` - нагрузка по мышцам.
+## Итерация 5: Адаптивный контур обновления модели — ⏳ НЕ НАЧАТА
 
-### Что брать из `hybrid_model.ipynb`
-
-- логику экспоненциального восстановления;
-- логику разнообразия через историю;
-- штраф за перегрузку уставших мышц;
-- прогрессию нагрузки внутри блока.
-
-### Как это использовать в MILP
-
-- Эти данные идут в `Weekly Process MILP`.
-- Модель назначает тренировки на дни недели.
-- Модель контролирует интервалы отдыха между тренировками.
-- Модель поддерживает прогрессию или разгрузку внутри недели.
-
-### Ожидаемый результат
-
-Система строит недельный тренировочный процесс с привязкой к дням и контролем восстановления.
-
-## Итерация 3: Обогатить данные для замены существующей тренировки
-
-### Какие данные нужны
-
-- `WorkoutSession.metadata.previousSessionId` - предыдущая тренировка в неделе.
-- `WorkoutSession.metadata.nextSessionId` - следующая тренировка в неделе.
-- `WorkoutSession.metadata.sessionLoadByMuscle` - фактическая или целевая нагрузка.
-- `WorkoutSession.metadata.sessionDurationMin` - длительность текущей сессии.
-- `WorkoutSession.metadata.mandatoryMuscles` - мышцы, которые нельзя потерять.
-- `WorkoutSession.metadata.forbiddenExercises` - упражнения, которые нельзя ставить.
-- `WorkoutSession.metadata.allowedTimeDeviationMin` - допустимое отклонение по времени.
-- `WorkoutSession.metadata.allowedLoadDeviation` - допустимое отклонение по нагрузке.
-
-### Что брать из `hybrid_model.ipynb`
-
-- принцип recency для повторяемости;
-- принцип similarity для сохранения структуры;
-- принцип fatigue-aware replacement.
-
-### Как это использовать в MILP
-
-- Замена тренировки должна сохранять структуру недели.
-- Замена не должна ломать отдых и восстановление.
-- Замена не должна нарушать недельный баланс по мышцам.
-
-### Ожидаемый результат
-
-Система заменяет тренировку без разрушения недельного процесса.
-
-## Итерация 4: Зафиксировать числовые коэффициенты и функции перевода
-
-### Какие данные нужны
-
-- `Exercise.metadata.complexityScore` как источник `f_complexity`.
-- история использования упражнений как источник `f_frequency`.
-- `Exercise.metadata.phaseAffinity` как источник `f_affinity`.
-- `Exercise.metadata.fatigueCost` как источник штрафа усталости.
-- `Exercise.metadata.timeCostSec` как источник временного ограничения.
-- `User.metadata.recoveryCapacity` как источник персональной скорости восстановления.
-
-### Что брать из `hybrid_model.ipynb`
-
-- `lambda = 0.345`;
-- `theta = 1.5`;
-- `alpha_1 = 1.5`;
-- `alpha_2 = 0.5`;
-- `alpha_3 = 2.0`;
-- `delta = 0.2`;
-- `epsilon = 0.2`;
-- `V_e(t) = min(1, Δt_e / 4)`;
-- `P_e(t) = min(1, Σ I_{e,m} · max(0, F_m(t) - θ))`.
-
-### Как это использовать в MILP
-
-- Все коэффициенты должны храниться или вычисляться из `metadata`.
-- `forbidden` всегда дает нулевую допустимость.
-- `not_recommended` снижает приоритет.
-- `low_weight` снижает приоритет мягко.
-
-### Ожидаемый результат
-
-Система использует единые числовые правила вместо ручных ветвлений.
-
-## Итерация 5: Собрать адаптивный контур обновления модели
-
-### Какие данные нужны
-
-- история завершенных тренировок;
-- `RPE`;
-- `soreness`;
-- `readiness`;
-- `pain`;
-- `technique`;
-- фактический объем;
-- фактическая длительность;
-- результаты замены тренировок;
-- изменения `metadata` после недели.
-
-### Что брать из `hybrid_model.ipynb`
-
-- механизм обновления усталости после каждой тренировки;
-- принцип накопления и восстановления нагрузки;
-- принцип recalibration weights.
-
-### Как это использовать в MILP
-
-- После каждой недели пересчитывать коэффициенты.
-- Использовать фактический факт выполнения для корректировки priors.
-- Проверять согласованность `metadata` перед новым планированием.
-
-### Ожидаемый результат
-
-Система становится адаптивной и начинает учитывать реальную историю выполнения.
+**Что нужно:** история завершённых тренировок, RPE, soreness, readiness, pain, technique, фактический объём и длительность. Пересчёт priors после каждой недели.

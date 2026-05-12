@@ -4,9 +4,7 @@ import type { Contraindication } from '../entities/index.js';
 import type { IContraindicationsRepository } from '../common/repositories/index.js';
 
 @Injectable()
-export class ContraindicationsSqlRepository
-  implements IContraindicationsRepository
-{
+export class ContraindicationsSqlRepository implements IContraindicationsRepository {
   constructor(private readonly db: DatabaseService) {}
 
   async findAll(): Promise<Contraindication[]> {

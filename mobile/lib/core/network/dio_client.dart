@@ -1,11 +1,14 @@
 import 'package:dio/dio.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../constants/app_constants.dart';
 import '../storage/auth_storage.dart';
 import 'api_interceptor.dart';
 
-final dioProvider = Provider<Dio>((ref) {
+part 'dio_client.g.dart';
+
+@Riverpod(keepAlive: true)
+Dio dio(DioRef ref) {
   final authStorage = ref.watch(authStorageProvider);
 
   final dio = Dio(
@@ -23,4 +26,4 @@ final dioProvider = Provider<Dio>((ref) {
   dio.interceptors.add(ApiInterceptor(authStorage));
 
   return dio;
-});
+}

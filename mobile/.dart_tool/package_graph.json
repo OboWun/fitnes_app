@@ -7,26 +7,65 @@
       "name": "mobile",
       "version": "1.0.0+1",
       "dependencies": [
-        "auto_route",
         "cupertino_icons",
         "device_info_plus",
         "dio",
         "flutter",
         "flutter_riverpod",
+        "freezed_annotation",
+        "go_router",
+        "json_annotation",
         "riverpod_annotation",
         "shared_preferences"
       ],
       "devDependencies": [
-        "auto_route_generator",
         "build_runner",
         "flutter_lints",
         "flutter_test",
+        "freezed",
+        "golden_toolkit",
+        "json_serializable",
+        "mocktail",
         "riverpod_generator"
       ]
     },
     {
+      "name": "json_serializable",
+      "version": "6.9.5",
+      "dependencies": [
+        "analyzer",
+        "async",
+        "build",
+        "build_config",
+        "collection",
+        "dart_style",
+        "json_annotation",
+        "meta",
+        "path",
+        "pub_semver",
+        "pubspec_parse",
+        "source_gen",
+        "source_helper"
+      ]
+    },
+    {
+      "name": "freezed",
+      "version": "2.5.8",
+      "dependencies": [
+        "analyzer",
+        "build",
+        "build_config",
+        "collection",
+        "dart_style",
+        "freezed_annotation",
+        "json_annotation",
+        "meta",
+        "source_gen"
+      ]
+    },
+    {
       "name": "riverpod_generator",
-      "version": "2.6.5",
+      "version": "2.6.4",
       "dependencies": [
         "analyzer",
         "build",
@@ -38,24 +77,6 @@
         "riverpod_analyzer_utils",
         "riverpod_annotation",
         "source_gen"
-      ]
-    },
-    {
-      "name": "auto_route_generator",
-      "version": "9.3.1",
-      "dependencies": [
-        "analyzer",
-        "args",
-        "auto_route",
-        "build",
-        "build_runner",
-        "code_builder",
-        "dart_style",
-        "glob",
-        "package_config",
-        "path",
-        "source_gen",
-        "xml"
       ]
     },
     {
@@ -101,6 +122,24 @@
       ]
     },
     {
+      "name": "golden_toolkit",
+      "version": "0.15.0",
+      "dependencies": [
+        "flutter",
+        "flutter_test",
+        "meta"
+      ]
+    },
+    {
+      "name": "mocktail",
+      "version": "1.0.5",
+      "dependencies": [
+        "collection",
+        "matcher",
+        "test_api"
+      ]
+    },
+    {
       "name": "flutter_lints",
       "version": "5.0.0",
       "dependencies": [
@@ -123,6 +162,22 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "json_annotation",
+      "version": "4.9.0",
+      "dependencies": [
+        "meta"
+      ]
+    },
+    {
+      "name": "freezed_annotation",
+      "version": "2.4.4",
+      "dependencies": [
+        "collection",
+        "json_annotation",
+        "meta"
       ]
     },
     {
@@ -167,14 +222,14 @@
       ]
     },
     {
-      "name": "auto_route",
-      "version": "9.3.0+1",
+      "name": "go_router",
+      "version": "14.8.1",
       "dependencies": [
         "collection",
         "flutter",
-        "meta",
-        "path",
-        "web"
+        "flutter_web_plugins",
+        "logging",
+        "meta"
       ]
     },
     {
@@ -214,6 +269,14 @@
       ]
     },
     {
+      "name": "source_helper",
+      "version": "1.3.7",
+      "dependencies": [
+        "analyzer",
+        "source_gen"
+      ]
+    },
+    {
       "name": "source_gen",
       "version": "2.0.0",
       "dependencies": [
@@ -229,17 +292,21 @@
       ]
     },
     {
-      "name": "riverpod_analyzer_utils",
-      "version": "0.5.10",
+      "name": "pubspec_parse",
+      "version": "1.5.0",
       "dependencies": [
-        "analyzer",
+        "checked_yaml",
         "collection",
-        "crypto",
-        "custom_lint_core",
-        "freezed_annotation",
-        "meta",
-        "path",
-        "source_span"
+        "json_annotation",
+        "pub_semver",
+        "yaml"
+      ]
+    },
+    {
+      "name": "pub_semver",
+      "version": "2.2.0",
+      "dependencies": [
+        "collection"
       ]
     },
     {
@@ -253,10 +320,17 @@
       "dependencies": []
     },
     {
-      "name": "crypto",
-      "version": "3.0.7",
+      "name": "dart_style",
+      "version": "3.1.1",
       "dependencies": [
-        "typed_data"
+        "analyzer",
+        "args",
+        "collection",
+        "package_config",
+        "path",
+        "pub_semver",
+        "source_span",
+        "yaml"
       ]
     },
     {
@@ -296,6 +370,14 @@
       ]
     },
     {
+      "name": "async",
+      "version": "2.13.1",
+      "dependencies": [
+        "collection",
+        "meta"
+      ]
+    },
+    {
       "name": "analyzer",
       "version": "7.6.0",
       "dependencies": [
@@ -314,60 +396,24 @@
       ]
     },
     {
-      "name": "package_config",
-      "version": "2.2.0",
-      "dependencies": [
-        "path"
-      ]
-    },
-    {
-      "name": "glob",
-      "version": "2.1.3",
-      "dependencies": [
-        "async",
-        "collection",
-        "file",
-        "path",
-        "string_scanner"
-      ]
-    },
-    {
-      "name": "args",
-      "version": "2.7.0",
-      "dependencies": []
-    },
-    {
-      "name": "xml",
-      "version": "6.6.1",
-      "dependencies": [
-        "collection",
-        "meta",
-        "petitparser"
-      ]
-    },
-    {
-      "name": "dart_style",
-      "version": "3.1.1",
+      "name": "riverpod_analyzer_utils",
+      "version": "0.5.9",
       "dependencies": [
         "analyzer",
-        "args",
         "collection",
-        "package_config",
+        "crypto",
+        "custom_lint_core",
+        "freezed_annotation",
+        "meta",
         "path",
-        "pub_semver",
-        "source_span",
-        "yaml"
+        "source_span"
       ]
     },
     {
-      "name": "code_builder",
-      "version": "4.11.1",
+      "name": "crypto",
+      "version": "3.0.7",
       "dependencies": [
-        "built_collection",
-        "built_value",
-        "collection",
-        "matcher",
-        "meta"
+        "typed_data"
       ]
     },
     {
@@ -444,29 +490,18 @@
       ]
     },
     {
-      "name": "pubspec_parse",
-      "version": "1.5.0",
-      "dependencies": [
-        "checked_yaml",
-        "collection",
-        "json_annotation",
-        "pub_semver",
-        "yaml"
-      ]
-    },
-    {
-      "name": "pub_semver",
-      "version": "2.2.0",
-      "dependencies": [
-        "collection"
-      ]
-    },
-    {
       "name": "pool",
       "version": "1.5.2",
       "dependencies": [
         "async",
         "stack_trace"
+      ]
+    },
+    {
+      "name": "package_config",
+      "version": "2.2.0",
+      "dependencies": [
+        "path"
       ]
     },
     {
@@ -518,11 +553,33 @@
       ]
     },
     {
+      "name": "glob",
+      "version": "2.1.3",
+      "dependencies": [
+        "async",
+        "collection",
+        "file",
+        "path",
+        "string_scanner"
+      ]
+    },
+    {
       "name": "frontend_server_client",
       "version": "4.0.0",
       "dependencies": [
         "async",
         "path"
+      ]
+    },
+    {
+      "name": "code_builder",
+      "version": "4.11.1",
+      "dependencies": [
+        "built_collection",
+        "built_value",
+        "collection",
+        "matcher",
+        "meta"
       ]
     },
     {
@@ -592,11 +649,34 @@
       ]
     },
     {
-      "name": "async",
-      "version": "2.13.1",
+      "name": "args",
+      "version": "2.7.0",
+      "dependencies": []
+    },
+    {
+      "name": "test_api",
+      "version": "0.7.6",
       "dependencies": [
+        "async",
+        "boolean_selector",
         "collection",
-        "meta"
+        "meta",
+        "source_span",
+        "stack_trace",
+        "stream_channel",
+        "string_scanner",
+        "term_glyph"
+      ]
+    },
+    {
+      "name": "matcher",
+      "version": "0.12.17",
+      "dependencies": [
+        "async",
+        "meta",
+        "stack_trace",
+        "term_glyph",
+        "test_api"
       ]
     },
     {
@@ -638,32 +718,6 @@
       "dependencies": [
         "clock",
         "collection"
-      ]
-    },
-    {
-      "name": "matcher",
-      "version": "0.12.17",
-      "dependencies": [
-        "async",
-        "meta",
-        "stack_trace",
-        "term_glyph",
-        "test_api"
-      ]
-    },
-    {
-      "name": "test_api",
-      "version": "0.7.6",
-      "dependencies": [
-        "async",
-        "boolean_selector",
-        "collection",
-        "meta",
-        "source_span",
-        "stack_trace",
-        "stream_channel",
-        "string_scanner",
-        "term_glyph"
       ]
     },
     {
@@ -833,48 +887,6 @@
       ]
     },
     {
-      "name": "freezed_annotation",
-      "version": "3.1.0",
-      "dependencies": [
-        "collection",
-        "json_annotation",
-        "meta"
-      ]
-    },
-    {
-      "name": "custom_lint_core",
-      "version": "0.7.5",
-      "dependencies": [
-        "analyzer",
-        "analyzer_plugin",
-        "collection",
-        "custom_lint_visitor",
-        "glob",
-        "matcher",
-        "meta",
-        "package_config",
-        "path",
-        "pubspec_parse",
-        "source_span",
-        "uuid",
-        "yaml"
-      ]
-    },
-    {
-      "name": "typed_data",
-      "version": "1.4.0",
-      "dependencies": [
-        "collection"
-      ]
-    },
-    {
-      "name": "json_annotation",
-      "version": "4.11.0",
-      "dependencies": [
-        "meta"
-      ]
-    },
-    {
       "name": "checked_yaml",
       "version": "2.0.4",
       "dependencies": [
@@ -913,6 +925,32 @@
       ]
     },
     {
+      "name": "custom_lint_core",
+      "version": "0.7.5",
+      "dependencies": [
+        "analyzer",
+        "analyzer_plugin",
+        "collection",
+        "custom_lint_visitor",
+        "glob",
+        "matcher",
+        "meta",
+        "package_config",
+        "path",
+        "pubspec_parse",
+        "source_span",
+        "uuid",
+        "yaml"
+      ]
+    },
+    {
+      "name": "typed_data",
+      "version": "1.4.0",
+      "dependencies": [
+        "collection"
+      ]
+    },
+    {
       "name": "string_scanner",
       "version": "1.4.1",
       "dependencies": [
@@ -920,18 +958,23 @@
       ]
     },
     {
-      "name": "petitparser",
-      "version": "7.0.2",
-      "dependencies": [
-        "collection",
-        "meta"
-      ]
-    },
-    {
       "name": "web_socket",
       "version": "1.0.1",
       "dependencies": [
         "web"
+      ]
+    },
+    {
+      "name": "term_glyph",
+      "version": "1.2.2",
+      "dependencies": []
+    },
+    {
+      "name": "boolean_selector",
+      "version": "2.1.2",
+      "dependencies": [
+        "source_span",
+        "string_scanner"
       ]
     },
     {
@@ -952,19 +995,6 @@
         "meta",
         "path",
         "vm_service"
-      ]
-    },
-    {
-      "name": "term_glyph",
-      "version": "1.2.2",
-      "dependencies": []
-    },
-    {
-      "name": "boolean_selector",
-      "version": "2.1.2",
-      "dependencies": [
-        "source_span",
-        "string_scanner"
       ]
     },
     {
@@ -1005,6 +1035,11 @@
       ]
     },
     {
+      "name": "fixnum",
+      "version": "1.1.1",
+      "dependencies": []
+    },
+    {
       "name": "uuid",
       "version": "4.5.3",
       "dependencies": [
@@ -1030,11 +1065,6 @@
         "pub_semver",
         "yaml"
       ]
-    },
-    {
-      "name": "fixnum",
-      "version": "1.1.1",
-      "dependencies": []
     },
     {
       "name": "vm_service",

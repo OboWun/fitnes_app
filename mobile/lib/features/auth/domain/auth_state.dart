@@ -1,31 +1,30 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'user_model.dart';
 
-enum AuthStatus { initial, loading, authenticated, unauthenticated, onboarding, error }
+part 'auth_state.freezed.dart';
 
-class AuthState {
-  final AuthStatus status;
-  final UserModel? user;
-  final String? accessToken;
-  final String? errorMessage;
+@freezed
+class AuthState with _$AuthState {
+  const AuthState._();
 
-  const AuthState({
-    this.status = AuthStatus.initial,
-    this.user,
-    this.accessToken,
-    this.errorMessage,
-  });
-
-  AuthState copyWith({
-    AuthStatus? status,
+  const factory AuthState({
+    @Default(AuthStatus.initial) AuthStatus status,
     UserModel? user,
     String? accessToken,
     String? errorMessage,
-  }) {
-    return AuthState(
-      status: status ?? this.status,
-      user: user ?? this.user,
-      accessToken: accessToken ?? this.accessToken,
-      errorMessage: errorMessage ?? this.errorMessage,
-    );
-  }
+  }) = _AuthState;
+
+  bool get isAuthenticated => status == AuthStatus.authenticated;
+  bool get isLoading => status == AuthStatus.loading;
+  bool get isError => status == AuthStatus.error;
+  bool get needsOnboarding => status == AuthStatus.onboarding;
+}
+
+enum AuthStatus {
+  initial,
+  loading,
+  authenticated,
+  unauthenticated,
+  onboarding,
+  error,
 }

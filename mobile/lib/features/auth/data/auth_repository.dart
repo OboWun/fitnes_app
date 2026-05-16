@@ -1,9 +1,21 @@
-import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:io';
 
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+
 import '../../../core/storage/auth_storage.dart';
-import '../domain/user_model.dart';
 import 'auth_api.dart';
+import '../domain/user_model.dart';
+
+part 'auth_repository.g.dart';
+
+@riverpod
+AuthRepository authRepository(AuthRepositoryRef ref) {
+  return AuthRepository(
+    ref.watch(authApiProvider),
+    ref.watch(authStorageProvider),
+  );
+}
 
 class AuthRepository {
   final AuthApi _api;
@@ -11,7 +23,6 @@ class AuthRepository {
 
   AuthRepository(this._api, this._storage);
 
-  /// Получает или генерирует deviceId
   Future<String> getDeviceId() async {
     final storedId = _storage.deviceId;
     if (storedId != null) return storedId;
@@ -24,7 +35,8 @@ class AuthRepository {
       deviceId = android.id;
     } else if (Platform.isIOS) {
       final ios = await deviceInfo.iosInfo;
-      deviceId = ios.identifierForVendor ?? DateTime.now().millisecondsSinceEpoch.toString();
+      deviceId = ios.identifierForVendor ??
+          DateTime.now().millisecondsSinceEpoch.toString();
     } else {
       deviceId = DateTime.now().millisecondsSinceEpoch.toString();
     }
@@ -33,7 +45,6 @@ class AuthRepository {
     return deviceId;
   }
 
-  /// Аутентификация по deviceId. Возвращает пользователя
   Future<({UserModel user, String accessToken})> authenticate() async {
     final deviceId = await getDeviceId();
     final response = await _api.authenticateDevice(deviceId);
@@ -47,7 +58,6 @@ class AuthRepository {
     return (user: user, accessToken: accessToken);
   }
 
-  /// Обновление профиля
   Future<UserModel> updateProfile({
     String? name,
     String? gender,
@@ -68,5 +78,13 @@ class AuthRepository {
     return UserModel.fromJson(response);
   }
 
+  Future<List<Map<String, dynamic>>> getContraindications() async {
+    return _api.getContraindications();
+  }
+
   bool get isAuthenticated => _storage.isAuthenticated;
+
+  Future<void> clearAuth() async {
+    await _storage.clear();
+  }
 }

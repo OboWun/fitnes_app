@@ -1,13 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/widgets/sliver_gap.dart';
 import '../../../design_system/design_system.dart';
+import '../domain/onboarding_state.dart';
 import '../onboarding_provider.dart';
-import 'widgets/step_age.dart';
-import 'widgets/step_body_params.dart';
-import 'widgets/step_contraindications.dart';
-import 'widgets/step_gender.dart';
-import 'widgets/step_name.dart';
+import 'smart_widgets/sliver_age_step_smart.dart';
+import 'smart_widgets/sliver_body_params_step_smart.dart';
+import 'smart_widgets/sliver_contraindications_step_smart.dart';
+import 'smart_widgets/sliver_gender_step_smart.dart';
+import 'smart_widgets/sliver_name_step_smart.dart';
+
+part '_progress_dots.dart';
+part '_navigation_buttons.dart';
+part '_gradient_button.dart';
 
 class OnboardingPage extends ConsumerStatefulWidget {
   const OnboardingPage({super.key});
@@ -17,34 +23,16 @@ class OnboardingPage extends ConsumerStatefulWidget {
 }
 
 class _OnboardingPageState extends ConsumerState<OnboardingPage> {
-  late final PageController _pageController;
-
-  @override
-  void initState() {
-    super.initState();
-    _pageController = PageController();
-  }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
-
-  /// Карти��ки для каждого шага (циклически по profile_1..5)
-  String _imageForStep(int step) {
-    final imageStep = (step % 5) + 1;
-    return 'assets/images/profile_$imageStep.png';
-  }
+  double get _expandedHeight => MediaQuery.sizeOf(context).height * 0.38;
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(onboardingProvider);
 
     ref.listen<OnboardingState>(onboardingProvider, (prev, next) {
-      if (prev?.currentStep != next.currentStep) {
-        _pageController.animateToPage(
-          next.currentStep,
+      if (prev != null && prev.currentStep != next.currentStep) {
+        PrimaryScrollController.of(context).animateTo(
+          0,
           duration: const Duration(milliseconds: 350),
           curve: Curves.easeInOut,
         );
@@ -53,261 +41,171 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
 
     return Scaffold(
       backgroundColor: AppColors.whiteColor,
+      resizeToAvoidBottomInset: true,
+      bottomNavigationBar: _NavigationButtons(
+        state: state,
+        onBack: () =>
+            ref.read(onboardingProvider.notifier).previousStep(),
+        onNext: () =>
+            ref.read(onboardingProvider.notifier).nextStep(),
+      ),
       body: SafeArea(
-        child: Column(
-          children: [
-            // Image section
-            Expanded(
-              flex: 4,
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: Image.asset(
-                  _imageForStep(state.currentStep),
-                  key: ValueKey(state.currentStep),
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) {
-                    // Если картинка не найдена — показываем заглушку с градиентом
-                    return Container(
-                      margin: const EdgeInsets.all(40),
-                      decoration: BoxDecoration(
-                        gradient: AppGradients.blueLinear,
-                        borderRadius: BorderRadius.circular(24),
-                      ),
-                      child: Center(
-                        child: Icon(
-                          _iconForStep(state.currentStep),
-                          size: 80,
-                          color: AppColors.whiteColor.withValues(alpha: 0.8),
-                        ),
-                      ),
-                    );
-                  },
+        child: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              pinned: true,
+              expandedHeight: _expandedHeight,
+              collapsedHeight: 60,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: const SizedBox.shrink(),
+              flexibleSpace: _StepFlexibleSpace(
+                currentStep: state.currentStep,
+                totalSteps: state.totalSteps,
+                expandedHeight: _expandedHeight,
+              ),
+              bottom: PreferredSize(
+                preferredSize: const Size.fromHeight(32),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+                  child: _ProgressDots(
+                    current: state.currentStep,
+                    total: state.totalSteps,
+                  ),
                 ),
               ),
             ),
-
-            // Content section
-            Expanded(
-              flex: 5,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-                decoration: const BoxDecoration(
-                  color: AppColors.whiteColor,
-                  borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(0x0A000000),
-                      blurRadius: 20,
-                      offset: Offset(0, -4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  children: [
-                    // Progress indicator
-                    _ProgressDots(
-                      current: state.currentStep,
-                      total: state.totalSteps,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // Step content
-                    Expanded(
-                      child: PageView(
-                        controller: _pageController,
-                        physics: const NeverScrollableScrollPhysics(),
-                        children: const [
-                          StepName(),
-                          StepGender(),
-                          StepAge(),
-                          StepBodyParams(),
-                          StepContraindications(),
-                        ],
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // Navigation buttons
-                    _NavigationButtons(
-                      state: state,
-                      onBack: () => ref.read(onboardingProvider.notifier).previousStep(),
-                      onNext: () => ref.read(onboardingProvider.notifier).nextStep(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            switch (state.currentStep) {
+              0 => const SliverNameStepSmart(),
+              1 => const SliverGenderStepSmart(),
+              2 => const SliverAgeStepSmart(),
+              3 => const SliverBodyParamsStepSmart(),
+              4 => const SliverContraindicationsStepSmart(),
+              _ => const SliverGap(vertical: 0),
+            },
           ],
         ),
       ),
     );
   }
-
-  IconData _iconForStep(int step) {
-    switch (step) {
-      case 0:
-        return Icons.person_outline;
-      case 1:
-        return Icons.wc_outlined;
-      case 2:
-        return Icons.cake_outlined;
-      case 3:
-        return Icons.straighten_outlined;
-      case 4:
-        return Icons.health_and_safety_outlined;
-      default:
-        return Icons.fitness_center;
-    }
-  }
 }
 
-class _ProgressDots extends StatelessWidget {
-  final int current;
-  final int total;
+class _StepFlexibleSpace extends StatelessWidget {
+  final int currentStep;
+  final int totalSteps;
+  final double expandedHeight;
 
-  const _ProgressDots({required this.current, required this.total});
+  const _StepFlexibleSpace({
+    required this.currentStep,
+    required this.totalSteps,
+    required this.expandedHeight,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(total, (index) {
-        final isActive = index == current;
-        final isPassed = index < current;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final t = ((constraints.maxHeight - 60) /
+                (expandedHeight - 60))
+            .clamp(0.0, 1.0);
 
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 250),
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          height: 8,
-          width: isActive ? 24 : 8,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4),
-            gradient: isActive || isPassed ? AppGradients.blueLinear : null,
-            color: (isActive || isPassed) ? null : AppColors.gray3,
+        return Container(
+          decoration: const BoxDecoration(
+            gradient: AppGradients.blueLinear,
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (t > 0.1)
+                Opacity(
+                  opacity: t,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      child: Image.asset(
+                        _imageForStep(currentStep),
+                        key: ValueKey(currentStep),
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, __, ___) =>
+                            _StepFallbackIcon(step: currentStep),
+                      ),
+                    ),
+                  ),
+                ),
+              if (t < 0.9)
+                Opacity(
+                  opacity: 1 - t,
+                  child: Center(
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          _iconForStep(currentStep),
+                          size: 28,
+                          color: AppColors.whiteColor,
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Шаг ${currentStep + 1} из $totalSteps',
+                          style: AppTypography.mediumTextSemiBold
+                              .copyWith(color: AppColors.whiteColor),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            ],
           ),
         );
-      }),
+      },
     );
+  }
+
+  String _imageForStep(int step) {
+    final imageStep = (step % 5) + 1;
+    return 'assets/images/profile_$imageStep.png';
+  }
+
+  IconData _iconForStep(int step) {
+    return switch (step) {
+      0 => Icons.person_outline,
+      1 => Icons.wc_outlined,
+      2 => Icons.cake_outlined,
+      3 => Icons.straighten_outlined,
+      4 => Icons.health_and_safety_outlined,
+      _ => Icons.fitness_center,
+    };
   }
 }
 
-class _NavigationButtons extends StatelessWidget {
-  final OnboardingState state;
-  final VoidCallback onBack;
-  final VoidCallback onNext;
+class _StepFallbackIcon extends StatelessWidget {
+  final int step;
 
-  const _NavigationButtons({
-    required this.state,
-    required this.onBack,
-    required this.onNext,
-  });
+  const _StepFallbackIcon({required this.step});
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        // Кнопка назад
-        if (!state.isFirstStep)
-          Expanded(
-            child: TextButton(
-              onPressed: onBack,
-              style: TextButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.arrow_back_ios, size: 16),
-                  const SizedBox(width: 4),
-                  Text(
-                    'Назад',
-                    style: AppTypography.largeTextMedium().copyWith(
-                      color: AppColors.gray1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          const Spacer(),
+    final icon = switch (step) {
+      0 => Icons.person_outline,
+      1 => Icons.wc_outlined,
+      2 => Icons.cake_outlined,
+      3 => Icons.straighten_outlined,
+      4 => Icons.health_and_safety_outlined,
+      _ => Icons.fitness_center,
+    };
 
-        const SizedBox(width: 16),
-
-        // Кнопка далее / завершить
-        Expanded(
-          flex: 2,
-          child: _GradientButton(
-            onPressed: state.canProceed ? onNext : null,
-            isLoading: state.isSubmitting,
-            label: state.isLastStep ? 'Завершить' : 'Далее',
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _GradientButton extends StatelessWidget {
-  final VoidCallback? onPressed;
-  final bool isLoading;
-  final String label;
-
-  const _GradientButton({
-    required this.onPressed,
-    required this.isLoading,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isEnabled = onPressed != null && !isLoading;
-
-    return GestureDetector(
-      onTap: isEnabled ? onPressed : null,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 16),
-        decoration: BoxDecoration(
-          gradient: isEnabled ? AppGradients.blueLinear : null,
-          color: isEnabled ? null : AppColors.gray3,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: isEnabled ? AppShadows.blue : null,
-        ),
-        child: Center(
-          child: isLoading
-              ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppColors.whiteColor,
-                  ),
-                )
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      label,
-                      style: AppTypography.largeTextSemiBold().copyWith(
-                        color: isEnabled ? AppColors.whiteColor : AppColors.gray2,
-                      ),
-                    ),
-                    if (label != 'Завершить') ...[
-                      const SizedBox(width: 8),
-                      Icon(
-                        Icons.arrow_forward_ios,
-                        size: 14,
-                        color: isEnabled ? AppColors.whiteColor : AppColors.gray2,
-                      ),
-                    ],
-                  ],
-                ),
+    return Container(
+      margin: const EdgeInsets.all(40),
+      decoration: BoxDecoration(
+        color: AppColors.whiteColor.withValues(alpha: 0.2),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Center(
+        child: Icon(
+          icon,
+          size: 80,
+          color: AppColors.whiteColor.withValues(alpha: 0.8),
         ),
       ),
     );

@@ -1,99 +1,23 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../auth/auth_provider.dart';
+import '../auth/public.dart';
+import 'domain/onboarding_state.dart';
 
-/// Состояние онбординга
-class OnboardingState {
-  final int currentStep;
-  final int totalSteps;
-  final String name;
-  final String gender;
-  final int? age;
-  final int? weight;
-  final int? height;
-  final List<String> contraindications;
-  final bool isSubmitting;
-  final String? error;
+part 'onboarding_provider.g.dart';
 
-  const OnboardingState({
-    this.currentStep = 0,
-    this.totalSteps = 5,
-    this.name = '',
-    this.gender = '',
-    this.age,
-    this.weight,
-    this.height,
-    this.contraindications = const [],
-    this.isSubmitting = false,
-    this.error,
-  });
-
-  OnboardingState copyWith({
-    int? currentStep,
-    String? name,
-    String? gender,
-    int? age,
-    int? weight,
-    int? height,
-    List<String>? contraindications,
-    bool? isSubmitting,
-    String? error,
-  }) {
-    return OnboardingState(
-      currentStep: currentStep ?? this.currentStep,
-      totalSteps: totalSteps,
-      name: name ?? this.name,
-      gender: gender ?? this.gender,
-      age: age ?? this.age,
-      weight: weight ?? this.weight,
-      height: height ?? this.height,
-      contraindications: contraindications ?? this.contraindications,
-      isSubmitting: isSubmitting ?? this.isSubmitting,
-      error: error,
-    );
-  }
-
-  /// Можно ли перейти к следующему шагу (обязательные поля заполнены)
-  bool get canProceed {
-    switch (currentStep) {
-      case 0: // Имя — обязательно
-        return name.trim().isNotEmpty;
-      case 1: // Пол — обязательно
-        return gender.isNotEmpty;
-      case 2: // Возраст — необязательно
-        return true;
-      case 3: // Вес/Рост — необязательно
-        return true;
-      case 4: // Противопоказания — необязательно
-        return true;
-      default:
-        return true;
-    }
-  }
-
-  bool get isFirstStep => currentStep == 0;
-  bool get isLastStep => currentStep == totalSteps - 1;
-  double get progress => (currentStep + 1) / totalSteps;
-}
-
-final onboardingProvider =
-    StateNotifierProvider<OnboardingNotifier, OnboardingState>((ref) {
-  return OnboardingNotifier(ref);
-});
-
-class OnboardingNotifier extends StateNotifier<OnboardingState> {
-  final Ref _ref;
-
-  OnboardingNotifier(this._ref) : super(const OnboardingState()) {
+@riverpod
+class Onboarding extends _$Onboarding {
+  @override
+  OnboardingState build() {
     _initFromExistingUser();
+    return const OnboardingState();
   }
 
-  /// Если пользователь уже частично заполнен — подставляем данные
   void _initFromExistingUser() {
-    final authState = _ref.read(authProvider);
+    final authState = ref.read(authProvider);
     final user = authState.user;
     if (user != null) {
-      state = state.copyWith(
+      state = OnboardingState(
         name: user.name ?? '',
         gender: user.gender ?? '',
         age: user.age,
@@ -162,7 +86,7 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
     state = state.copyWith(isSubmitting: true, error: null);
 
     try {
-      final authNotifier = _ref.read(authProvider.notifier);
+      final authNotifier = ref.read(authProvider.notifier);
 
       await authNotifier.updateProfile(
         name: state.name,
@@ -170,7 +94,8 @@ class OnboardingNotifier extends StateNotifier<OnboardingState> {
         age: state.age,
         weight: state.weight,
         height: state.height,
-        contraindications: state.contraindications.isEmpty ? null : state.contraindications,
+        contraindications:
+            state.contraindications.isEmpty ? null : state.contraindications,
       );
 
       authNotifier.completeOnboarding();

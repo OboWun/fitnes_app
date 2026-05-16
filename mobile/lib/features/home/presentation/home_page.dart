@@ -1,0 +1,50 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../design_system/design_system.dart';
+import '../home_provider.dart';
+import 'smart_widgets/dictionary_grid_smart.dart';
+import 'smart_widgets/profile_header_smart.dart';
+import 'smart_widgets/view_all_link_smart.dart';
+import 'smart_widgets/week_calendar_smart.dart';
+import 'widgets/section_header.dart';
+import 'widgets/workout_reminder.dart';
+
+class HomePage extends ConsumerWidget {
+  const HomePage({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final homeData = ref.watch(homeProvider);
+
+    return Scaffold(
+      backgroundColor: AppColors.whiteColor,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const ProfileHeaderSmart(),
+              const SizedBox(height: 24),
+              const SectionHeader(title: 'Тренировки'),
+              const SizedBox(height: 16),
+              const WeekCalendarSmart(),
+              if (homeData.todaySession != null) ...[
+                const SizedBox(height: 16),
+                WorkoutReminder(session: homeData.todaySession!),
+              ],
+              const SizedBox(height: 12),
+              const ViewAllLinkSmart(route: '/workouts'),
+              const SizedBox(height: 24),
+              const SectionHeader(title: 'Справочник'),
+              const SizedBox(height: 16),
+              const DictionaryGridSmart(),
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -49,7 +49,7 @@ class AppTheme {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            textStyle: AppTypography.largeTextSemiBold(),
+            textStyle: AppTypography.largeTextSemiBold,
           ),
         ),
         outlinedButtonTheme: OutlinedButtonThemeData(
@@ -60,13 +60,13 @@ class AppTheme {
               borderRadius: BorderRadius.circular(16),
             ),
             side: const BorderSide(color: AppColors.borderColor),
-            textStyle: AppTypography.largeTextSemiBold(),
+            textStyle: AppTypography.largeTextSemiBold,
           ),
         ),
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
             foregroundColor: AppColors.gray1,
-            textStyle: AppTypography.mediumTextMedium(),
+            textStyle: AppTypography.mediumTextMedium,
           ),
         ),
         inputDecorationTheme: InputDecorationTheme(
@@ -89,8 +89,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(16),
             borderSide: const BorderSide(color: AppColors.danger),
           ),
-          hintStyle: AppTypography.mediumTextRegular().copyWith(color: AppColors.gray2),
-          labelStyle: AppTypography.mediumTextMedium().copyWith(color: AppColors.gray1),
+          hintStyle: AppTypography.mediumTextRegular.copyWith(color: AppColors.gray2),
+          labelStyle: AppTypography.mediumTextMedium.copyWith(color: AppColors.gray1),
         ),
         dividerTheme: const DividerThemeData(
           color: AppColors.borderColor,

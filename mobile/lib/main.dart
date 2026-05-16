@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'core/router/app_router.dart';
 import 'core/storage/auth_storage.dart';
 import 'design_system/design_system.dart';
-import 'features/home/home_page.dart';
-import 'features/onboarding/presentation/onboarding_page.dart';
-import 'features/splash/splash_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,21 +21,18 @@ void main() async {
   );
 }
 
-class FitnessApp extends StatelessWidget {
+class FitnessApp extends ConsumerWidget {
   const FitnessApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(appRouterProvider);
+
+    return MaterialApp.router(
       title: 'FitnessX',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      initialRoute: '/',
-      routes: {
-        '/': (_) => const SplashPage(),
-        '/onboarding': (_) => const OnboardingPage(),
-        '/home': (_) => const HomePage(),
-      },
+      routerConfig: router,
     );
   }
 }

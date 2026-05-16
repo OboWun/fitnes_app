@@ -1,62 +1,48 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../core/network/dio_client.dart';
 import '../../core/storage/auth_storage.dart';
-import 'data/auth_api.dart';
 import 'data/auth_repository.dart';
 import 'domain/auth_state.dart';
 import 'domain/user_model.dart';
 
-final authApiProvider = Provider<AuthApi>((ref) {
-  return AuthApi(ref.watch(dioProvider));
-});
+part 'auth_provider.g.dart';
 
-final authRepositoryProvider = Provider<AuthRepository>((ref) {
-  return AuthRepository(
-    ref.watch(authApiProvider),
-    ref.watch(authStorageProvider),
-  );
-});
+@Riverpod(keepAlive: true)
+class Auth extends _$Auth {
+  @override
+  AuthState build() {
+    return const AuthState();
+  }
 
-final authProvider = StateNotifierProvider<AuthNotifier, AuthState>((ref) {
-  return AuthNotifier(ref.watch(authRepositoryProvider));
-});
-
-class AuthNotifier extends StateNotifier<AuthState> {
-  final AuthRepository _repository;
-
-  AuthNotifier(this._repository) : super(const AuthState());
-
-  /// Инициализация при старте приложения
   Future<void> initialize() async {
-    state = state.copyWith(status: AuthStatus.loading);
+    state = const AuthState(status: AuthStatus.loading);
 
     try {
-      final result = await _repository.authenticate();
+      final repository = ref.read(authRepositoryProvider);
+      final result = await repository.authenticate();
       final user = result.user;
 
       if (user.isProfileComplete) {
-        state = state.copyWith(
+        state = AuthState(
           status: AuthStatus.authenticated,
           user: user,
           accessToken: result.accessToken,
         );
       } else {
-        state = state.copyWith(
+        state = AuthState(
           status: AuthStatus.onboarding,
           user: user,
           accessToken: result.accessToken,
         );
       }
     } catch (e) {
-      state = state.copyWith(
+      state = AuthState(
         status: AuthStatus.error,
         errorMessage: e.toString(),
       );
     }
   }
 
-  /// Обновление профиля (из онбординга)
   Future<void> updateProfile({
     String? name,
     String? gender,
@@ -66,7 +52,8 @@ class AuthNotifier extends StateNotifier<AuthState> {
     List<String>? contraindications,
   }) async {
     try {
-      final updatedUser = await _repository.updateProfile(
+      final repository = ref.read(authRepositoryProvider);
+      final updatedUser = await repository.updateProfile(
         name: name,
         gender: gender,
         age: age,
@@ -81,13 +68,24 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
-  /// Заве��шение онбординга
   void completeOnboarding() {
     state = state.copyWith(status: AuthStatus.authenticated);
   }
 
-  /// Обновляет user локально (без отправки на сервер)
   void updateUserLocally(UserModel user) {
     state = state.copyWith(user: user);
   }
+
+  Future<void> logout() async {
+    final storage = ref.read(authStorageProvider);
+    await storage.clear();
+    state = const AuthState(status: AuthStatus.unauthenticated);
+  }
+}
+
+@riverpod
+Future<List<Map<String, dynamic>>> contraindications(
+    ContraindicationsRef ref) async {
+  final repository = ref.watch(authRepositoryProvider);
+  return repository.getContraindications();
 }

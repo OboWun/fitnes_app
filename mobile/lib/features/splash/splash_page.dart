@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../design_system/design_system.dart';
-import '../auth/auth_provider.dart';
-import '../auth/domain/auth_state.dart';
+import '../auth/public.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
@@ -16,7 +15,6 @@ class _SplashPageState extends ConsumerState<SplashPage> {
   @override
   void initState() {
     super.initState();
-    // Запускаем аутентификацию
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(authProvider.notifier).initialize();
     });
@@ -25,26 +23,6 @@ class _SplashPageState extends ConsumerState<SplashPage> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-
-    // Навигация при изменении статуса
-    ref.listen<AuthState>(authProvider, (prev, next) {
-      if (next.status == AuthStatus.authenticated) {
-        Navigator.of(context).pushReplacementNamed('/home');
-      } else if (next.status == AuthStatus.onboarding) {
-        Navigator.of(context).pushReplacementNamed('/onboarding');
-      } else if (next.status == AuthStatus.error) {
-        // Показываем ошибку, но можно повторить
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(next.errorMessage ?? 'Ошибка подключения'),
-            action: SnackBarAction(
-              label: 'Повторить',
-              onPressed: () => ref.read(authProvider.notifier).initialize(),
-            ),
-          ),
-        );
-      }
-    });
 
     return Scaffold(
       body: Container(
@@ -56,7 +34,6 @@ class _SplashPageState extends ConsumerState<SplashPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo placeholder
             Container(
               width: 100,
               height: 100,
@@ -73,14 +50,14 @@ class _SplashPageState extends ConsumerState<SplashPage> {
             const SizedBox(height: 24),
             Text(
               'FitnessX',
-              style: AppTypography.h1Bold().copyWith(
+              style: AppTypography.h1Bold.copyWith(
                 color: AppColors.whiteColor,
               ),
             ),
             const SizedBox(height: 8),
             Text(
               'Everybody Can Train',
-              style: AppTypography.mediumTextRegular().copyWith(
+              style: AppTypography.mediumTextRegular.copyWith(
                 color: AppColors.whiteColor.withValues(alpha: 0.8),
               ),
             ),
@@ -95,13 +72,14 @@ class _SplashPageState extends ConsumerState<SplashPage> {
                     Text(
                       'Не удалось подключиться к серверу',
                       textAlign: TextAlign.center,
-                      style: AppTypography.mediumTextRegular().copyWith(
+                      style: AppTypography.mediumTextRegular.copyWith(
                         color: AppColors.whiteColor,
                       ),
                     ),
                     const SizedBox(height: 16),
                     ElevatedButton(
-                      onPressed: () => ref.read(authProvider.notifier).initialize(),
+                      onPressed: () =>
+                          ref.read(authProvider.notifier).initialize(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.whiteColor,
                         foregroundColor: AppColors.blackColor,

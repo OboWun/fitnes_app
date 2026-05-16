@@ -32,18 +32,6 @@
       "languageVersion": "3.4"
     },
     {
-      "name": "auto_route",
-      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/auto_route-9.3.0+1",
-      "packageUri": "lib/",
-      "languageVersion": "3.0"
-    },
-    {
-      "name": "auto_route_generator",
-      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/auto_route_generator-9.3.1",
-      "packageUri": "lib/",
-      "languageVersion": "3.3"
-    },
-    {
       "name": "boolean_selector",
       "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/boolean_selector-2.1.2",
       "packageUri": "lib/",
@@ -242,8 +230,14 @@
       "languageVersion": "3.8"
     },
     {
+      "name": "freezed",
+      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/freezed-2.5.8",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
+    },
+    {
       "name": "freezed_annotation",
-      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/freezed_annotation-3.1.0",
+      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/freezed_annotation-2.4.4",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -258,6 +252,18 @@
       "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/glob-2.1.3",
       "packageUri": "lib/",
       "languageVersion": "3.3"
+    },
+    {
+      "name": "go_router",
+      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/go_router-14.8.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "golden_toolkit",
+      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/golden_toolkit-0.15.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.18"
     },
     {
       "name": "graphs",
@@ -297,9 +303,15 @@
     },
     {
       "name": "json_annotation",
-      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/json_annotation-4.11.0",
+      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/json_annotation-4.9.0",
       "packageUri": "lib/",
-      "languageVersion": "3.9"
+      "languageVersion": "3.0"
+    },
+    {
+      "name": "json_serializable",
+      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/json_serializable-6.9.5",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
     },
     {
       "name": "leak_tracker",
@@ -356,6 +368,12 @@
       "languageVersion": "3.2"
     },
     {
+      "name": "mocktail",
+      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/mocktail-1.0.5",
+      "packageUri": "lib/",
+      "languageVersion": "2.12"
+    },
+    {
       "name": "package_config",
       "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/package_config-2.2.0",
       "packageUri": "lib/",
@@ -384,12 +402,6 @@
       "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/path_provider_windows-2.3.0",
       "packageUri": "lib/",
       "languageVersion": "3.2"
-    },
-    {
-      "name": "petitparser",
-      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/petitparser-7.0.2",
-      "packageUri": "lib/",
-      "languageVersion": "3.8"
     },
     {
       "name": "platform",
@@ -429,7 +441,7 @@
     },
     {
       "name": "riverpod_analyzer_utils",
-      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/riverpod_analyzer_utils-0.5.10",
+      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/riverpod_analyzer_utils-0.5.9",
       "packageUri": "lib/",
       "languageVersion": "3.0"
     },
@@ -441,7 +453,7 @@
     },
     {
       "name": "riverpod_generator",
-      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/riverpod_generator-2.6.5",
+      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/riverpod_generator-2.6.4",
       "packageUri": "lib/",
       "languageVersion": "2.17"
     },
@@ -508,6 +520,12 @@
     {
       "name": "source_gen",
       "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/source_gen-2.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.6"
+    },
+    {
+      "name": "source_helper",
+      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/source_helper-1.3.7",
       "packageUri": "lib/",
       "languageVersion": "3.6"
     },
@@ -630,12 +648,6 @@
       "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/xdg_directories-1.1.0",
       "packageUri": "lib/",
       "languageVersion": "3.3"
-    },
-    {
-      "name": "xml",
-      "rootUri": "file:///C:/Users/klari/AppData/Local/Pub/Cache/hosted/pub.dev/xml-6.6.1",
-      "packageUri": "lib/",
-      "languageVersion": "3.8"
     },
     {
       "name": "yaml",

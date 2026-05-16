@@ -17,7 +17,7 @@ class ViewAllLinkSmart extends StatelessWidget {
   Widget build(BuildContext context) {
     return ViewAllLink(
       label: label,
-      onTap: () => context.go(route),
+      onTap: () => context.push(route),
     );
   }
 }

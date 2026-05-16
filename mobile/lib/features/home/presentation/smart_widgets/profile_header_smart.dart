@@ -17,7 +17,7 @@ class ProfileHeaderSmart extends ConsumerWidget {
     return ProfileHeader(
       name: user.name ?? 'Атлет',
       gender: user.gender,
-      onTap: () => context.go('/profile'),
+      onTap: () => context.push('/profile'),
     );
   }
 }

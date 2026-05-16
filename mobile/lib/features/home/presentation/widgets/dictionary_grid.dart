@@ -106,39 +106,45 @@ class _DictionaryCard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        height: 80,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
           gradient: gradient,
           borderRadius: BorderRadius.circular(16),
           boxShadow: AppShadows.blue,
         ),
-        child: Row(
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.whiteColor.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(12),
-              ),
+            Positioned(
+              right: -4,
+              top: -8,
+              bottom: -8,
               child: Icon(
                 icon,
-                color: AppColors.whiteColor,
-                size: 22,
+                size: 72,
+                color: AppColors.whiteColor.withValues(alpha: 0.15),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: AppTypography.largeTextSemiBold.copyWith(
-                  color: AppColors.whiteColor,
+            Row(
+              children: [
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      title,
+                      style: AppTypography.largeTextSemiBold.copyWith(
+                        color: AppColors.whiteColor,
+                      ),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              color: AppColors.whiteColor.withValues(alpha: 0.7),
+                Icon(
+                  Icons.chevron_right,
+                  color: AppColors.whiteColor.withValues(alpha: 0.7),
+                ),
+              ],
             ),
           ],
         ),

@@ -9,9 +9,9 @@ class DictionaryGridSmart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DictionaryGrid(
-      onEquipmentTap: () => context.go('/equipment'),
-      onMusclesTap: () => context.go('/muscles'),
-      onExercisesTap: () => context.go('/exercises'),
+      onEquipmentTap: () => context.push('/equipment'),
+      onMusclesTap: () => context.push('/muscles'),
+      onExercisesTap: () => context.push('/exercises'),
     );
   }
 }

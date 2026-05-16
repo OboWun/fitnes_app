@@ -49,42 +49,43 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
         onNext: () =>
             ref.read(onboardingProvider.notifier).nextStep(),
       ),
-      body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
-            SliverAppBar(
-              pinned: true,
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            pinned: true,
+            expandedHeight: _expandedHeight,
+            collapsedHeight: 60,
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            leading: const SizedBox.shrink(),
+            flexibleSpace: _StepFlexibleSpace(
+              currentStep: state.currentStep,
+              totalSteps: state.totalSteps,
               expandedHeight: _expandedHeight,
-              collapsedHeight: 60,
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              leading: const SizedBox.shrink(),
-              flexibleSpace: _StepFlexibleSpace(
-                currentStep: state.currentStep,
-                totalSteps: state.totalSteps,
-                expandedHeight: _expandedHeight,
-              ),
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(32),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-                  child: _ProgressDots(
-                    current: state.currentStep,
-                    total: state.totalSteps,
-                  ),
+            ),
+            
+          ),
+          SliverPadding(
+             padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
+            sliver: PinnedHeaderSliver(
+              child: SizedBox(
+                height: 32,
+                child: _ProgressDots(
+                  current: state.currentStep,
+                  total: state.totalSteps,
                 ),
               ),
             ),
-            switch (state.currentStep) {
-              0 => const SliverNameStepSmart(),
-              1 => const SliverGenderStepSmart(),
-              2 => const SliverAgeStepSmart(),
-              3 => const SliverBodyParamsStepSmart(),
-              4 => const SliverContraindicationsStepSmart(),
-              _ => const SliverGap(vertical: 0),
-            },
-          ],
-        ),
+          ),
+          switch (state.currentStep) {
+            0 => const SliverNameStepSmart(),
+            1 => const SliverGenderStepSmart(),
+            2 => const SliverAgeStepSmart(),
+            3 => const SliverBodyParamsStepSmart(),
+            4 => const SliverContraindicationsStepSmart(),
+            _ => const SliverGap(vertical: 0),
+          },
+        ],
       ),
     );
   }
@@ -109,34 +110,17 @@ class _StepFlexibleSpace extends StatelessWidget {
                 (expandedHeight - 60))
             .clamp(0.0, 1.0);
 
+        final isSmall = t < 0.6;
         return Container(
           decoration: const BoxDecoration(
             gradient: AppGradients.blueLinear,
+            borderRadius: BorderRadius.vertical(bottom: Radius.circular(32), )
           ),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              if (t > 0.1)
-                Opacity(
-                  opacity: t,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 300),
-                      child: Image.asset(
-                        _imageForStep(currentStep),
-                        key: ValueKey(currentStep),
-                        fit: BoxFit.contain,
-                        errorBuilder: (_, __, ___) =>
-                            _StepFallbackIcon(step: currentStep),
-                      ),
-                    ),
-                  ),
-                ),
-              if (t < 0.9)
-                Opacity(
-                  opacity: 1 - t,
-                  child: Center(
+          child:  AnimatedSwitcher(
+           
+            duration: Durations.short3, child: Builder( key: ValueKey('$isSmall$currentStep'), builder: (_) {
+            if(isSmall) {
+              return Center(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -153,10 +137,21 @@ class _StepFlexibleSpace extends StatelessWidget {
                         ),
                       ],
                     ),
-                  ),
-                ),
-            ],
-          ),
+                  );
+            }
+            return  Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Image.asset(
+                      _imageForStep(currentStep),
+                      key: ValueKey(currentStep),
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) =>
+                          _StepFallbackIcon(step: currentStep),
+                    ),
+                  );
+          },),),
+          
+        
         );
       },
     );

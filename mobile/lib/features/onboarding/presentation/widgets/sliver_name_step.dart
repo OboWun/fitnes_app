@@ -30,9 +30,10 @@ class SliverNameStep extends StatelessWidget {
           ),
         ],
       ),
-      child: SliverPadding(
-        padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
-        sliver: SliverAdapter(
+      child: SliverFillRemaining(
+        hasScrollBody: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

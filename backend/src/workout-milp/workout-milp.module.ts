@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { WorkoutMilpController } from './workout-milp.controller.js';
 import { WorkoutMilpService } from './workout-milp.service.js';
 import { WeeklyProcessMilpService } from './weekly-process-milp.service.js';
+import { SetPlannerService } from '../workout-sessions/set-planner.service.js';
 import {
   EXERCISES_REPOSITORY,
   WORKOUT_TEMPLATES_REPOSITORY,
@@ -22,6 +23,7 @@ import { EquipmentPresetsSqlRepository } from '../equipment-presets/equipment-pr
   providers: [
     WorkoutMilpService,
     WeeklyProcessMilpService,
+    SetPlannerService,
     {
       provide: EXERCISES_REPOSITORY,
       useClass: ExercisesSqlRepository,

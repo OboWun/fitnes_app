@@ -23,6 +23,7 @@ export class AuthController {
         id: result.user.id,
         deviceId: result.user.deviceId,
         name: result.user.name,
+        gender: result.user.gender,
         weight: result.user.weight,
         height: result.user.height,
         age: result.user.age,

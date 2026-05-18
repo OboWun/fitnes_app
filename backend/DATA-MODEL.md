@@ -102,7 +102,7 @@
 ## Equipment
 
 ```typescript
-{ name: string; slug: string; }
+{ name: string; slug: string; description?: string; imageUrl?: string; }
 ```
 
 ## Contraindication
@@ -130,12 +130,12 @@
 
 ```typescript
 {
+  sessionDurationMin?: number;
   trainingGoal?: string;
   expectedLoad?: number;
   recoveryWindowDays?: number;
-  sessionDurationMin?: number;
-  blockType?: 'heavy' | 'moderate' | 'light' | 'recovery' | 'technique';
-  phase?: 'accumulation' | 'intensification' | 'realization' | 'deload' | 'transition';
+  blockType?: string;
+  phase?: string;
 }
 ```
 
@@ -149,7 +149,6 @@
   restBetweenSets?: number;
   restAfterExercise?: number;
   order: number;
-  metadata?: { targetLoad?: number; setWeight?: number; intensityWeight?: number; };
 }
 ```
 
@@ -163,7 +162,6 @@
   dayOfWeek: DayOfWeek;
   time: string;
   createdAt: string;
-  metadata?: { restBeforeDays?: number; restAfterDays?: number; };
 }
 ```
 
@@ -229,6 +227,8 @@
   forbiddenExercises?: string[];
   allowedTimeDeviationMin?: number;
   allowedLoadDeviation?: number;
+  autoSkipped?: boolean;
+  rescheduledFrom?: string;
 }
 ```
 
@@ -240,8 +240,78 @@
   exerciseSlug: string;
   sets: number;
   order: number;
-  metadata?: { targetLoad?: number; setWeight?: number; };
+  metadata?: WorkoutSessionExerciseMetadata;
 }
+```
+
+### WorkoutSessionExerciseMetadata
+
+```typescript
+{
+  targetLoad?: number;
+  setWeight?: number;
+}
+```
+
+## WorkoutSessionSet
+
+Per-set planned + actual data for exercises in a session.
+
+```typescript
+{
+  sessionId: string;
+  exerciseSlug: string;
+  setNumber: number;
+  setType: 'warmup' | 'working' | 'dropset';
+
+  plannedWeightKg?: number;
+  plannedReps?: number;
+  plannedDurationSec?: number;
+  plannedDistanceM?: number;
+
+  actualWeightKg?: number;
+  actualReps?: number;
+  actualDurationSec?: number;
+  actualDistanceM?: number;
+  actualRpe?: number;
+
+  completedAt?: Date;
+}
+```
+
+**Таблица БД:**
+```sql
+CREATE TABLE workout_session_sets (
+  session_id          TEXT NOT NULL REFERENCES workout_sessions(id) ON DELETE CASCADE,
+  exercise_slug       TEXT NOT NULL,
+  set_number          INT NOT NULL,
+  set_type            TEXT NOT NULL DEFAULT 'working',
+  planned_weight_kg   NUMERIC(6,2),
+  planned_reps        INT,
+  planned_duration_sec INT,
+  planned_distance_m  NUMERIC(8,1),
+  actual_weight_kg    NUMERIC(6,2),
+  actual_reps         INT,
+  actual_duration_sec INT,
+  actual_distance_m   NUMERIC(8,1),
+  actual_rpe          NUMERIC(3,1),
+  completed_at        TIMESTAMPTZ,
+  PRIMARY KEY (session_id, exercise_slug, set_number)
+);
+```
+
+- `workout_session_exercises` хранит структуру упражнения (slug, sets count, ordering)
+- `workout_session_sets` хранит per-set детали: planned (бэкенд) + actual (фронтенд при complete)
+- Compound exercises (movement_pattern: squat/press/pull/hinge/row/lunge): warmup + working sets
+- Cardio (movement_pattern: locomotion): 1 set с duration + distance
+- Bodyweight: planned_weight = user.weight, actual = weight + added
+
+**Вспомогательные типы:**
+```typescript
+type MeasurementType = 'weight_reps' | 'duration_distance' | 'reps_only';
+// weight_reps: strength/hypertrophy — planned_weight_kg + planned_reps
+// duration_distance: cardio/locomotion — planned_duration_sec + planned_distance_m
+// reps_only: bodyweight without weight — planned_reps only
 ```
 
 ## WorkoutDialog
@@ -322,6 +392,34 @@ CREATE TABLE equipment_presets (
 - `equipmentSlugs` — массив слагов из таблицы `equipments`
 - Системные пресеты: `gym-full`, `gym-basic`, `home`, `bodyweight-only`, `outdoor`
 
+## WeightLog
+
+Запись об изменении веса пользователя.
+
+```typescript
+{
+  id: string;
+  userId: string;
+  weight: number;
+  createdAt: string;
+}
+```
+
+**Таблица БД:**
+```sql
+CREATE TABLE weight_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id VARCHAR(50) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  weight NUMERIC(5,2) NOT NULL CHECK (weight > 0 AND weight < 500),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_weight_logs_user_created ON weight_logs(user_id, created_at DESC);
+```
+
+- Запись создаётся автоматически при `PATCH /users/profile` с полем `weight`
+- `GET /users/weight-history` — чтение с фильтром по периоду (`week` / `month` / `all`)
+
 ## Relationships
 
 ```
@@ -335,12 +433,14 @@ Muscle ---* antagonists ---> Muscle
 User ---* workoutTemplates ---> WorkoutTemplate
 User ---* workoutDialogs ---> WorkoutDialog
 User ---* equipmentPresets ---> EquipmentPreset
+User ---* weightLogs ---> WeightLog
 EquipmentPreset ---* equipmentSlugs ---> Equipment (via slug)
 WorkoutTemplate ---* exercises ---> WorkoutExercise (via exerciseSlug)
 WorkoutTemplate ---* scheduledWorkouts ---> ScheduledWorkout
 WorkoutTemplate ---* trainingBlocks ---> TrainingBlock
 TrainingBlock ---* sessions ---> WorkoutSession
 WorkoutSession ---* exercises ---> WorkoutSessionExercise
+WorkoutSession ---* sets ---> WorkoutSessionSet (per exercise in session)
 ScheduledWorkout ---> templateId ---> WorkoutTemplate
 WorkoutSession ---> blockId ---> TrainingBlock
 ```

@@ -1,12 +1,12 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { ExerciseResponseDto } from './exercise-response.dto.js';
+import { ExerciseShortResponseDto } from './exercise-short-response.dto.js';
 
 export class PaginatedExercisesResponseDto {
   @ApiProperty({
-    type: [ExerciseResponseDto],
+    type: [ExerciseShortResponseDto],
     description: 'Array of exercises',
   })
-  data: ExerciseResponseDto[];
+  data: ExerciseShortResponseDto[];
 
   @ApiProperty({ example: 100, description: 'Total number of items' })
   total: number;

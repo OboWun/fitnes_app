@@ -44,36 +44,50 @@ class _WeekCalendarSmartState extends ConsumerState<WeekCalendarSmart> {
     return '${_displayWeekStart.day} ${months[_displayWeekStart.month]} — ${end.day} ${months[end.month]}';
   }
 
+  String _fmtDate(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
   @override
   Widget build(BuildContext context) {
-    final homeData = ref.watch(homeProvider);
+    final homeAsync = ref.watch(homeProvider);
 
-    if (homeData.weekSessions.isEmpty && homeData.activeBlock == null) {
-      return const WeekCalendar.loading();
-    }
+    return homeAsync.when(
+      loading: () => const WeekCalendar.loading(),
+      error: (_, __) => const WeekCalendar.loading(),
+      data: (homeData) {
+        final today = DateTime.now();
+        final todayStr = _fmtDate(today);
 
-    final today = DateTime.now();
-    final todayStr =
-        '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-
-    return WeekCalendar(
-      sessions: homeData.weekSessions,
-      weekRangeLabel: _weekRangeLabel(),
-      todayStr: todayStr,
-      canGoBack: _canGoBack,
-      canGoForward: _canGoForward,
-      onBack: _canGoBack
-          ? () => setState(() {
-                _displayWeekStart =
-                    _displayWeekStart.subtract(const Duration(days: 7));
-              })
-          : null,
-      onForward: _canGoForward
-          ? () => setState(() {
-                _displayWeekStart =
-                    _displayWeekStart.add(const Duration(days: 7));
-              })
-          : null,
+        return WeekCalendar(
+          sessions: homeData.weekSessions,
+          weekRangeLabel: _weekRangeLabel(),
+          todayStr: todayStr,
+          canGoBack: _canGoBack,
+          canGoForward: _canGoForward,
+          onBack: _canGoBack
+              ? () {
+                  setState(() {
+                    _displayWeekStart =
+                        _displayWeekStart.subtract(const Duration(days: 7));
+                  });
+                  ref
+                      .read(homeProvider.notifier)
+                      .refresh(weekStart: _fmtDate(_displayWeekStart));
+                }
+              : null,
+          onForward: _canGoForward
+              ? () {
+                  setState(() {
+                    _displayWeekStart =
+                        _displayWeekStart.add(const Duration(days: 7));
+                  });
+                  ref
+                      .read(homeProvider.notifier)
+                      .refresh(weekStart: _fmtDate(_displayWeekStart));
+                }
+              : null,
+        );
+      },
     );
   }
 }

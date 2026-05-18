@@ -6,6 +6,7 @@ import {
   Delete,
   Param,
   Body,
+  Query,
   UseGuards,
   UsePipes,
   ValidationPipe,
@@ -26,6 +27,9 @@ import { WorkoutSessionsService } from './workout-sessions.service.js';
 import { CreateWorkoutSessionDto } from './dto/create-workout-session.dto.js';
 import { UpdateWorkoutSessionDto } from './dto/update-workout-session.dto.js';
 import { WorkoutSessionResponseDto } from './dto/workout-session-response.dto.js';
+import { WorkoutSessionsQueryDto } from './dto/workout-sessions-query.dto.js';
+import { CompleteSessionDto } from './dto/complete-session.dto.js';
+import { SkipSessionDto } from './dto/skip-session.dto.js';
 
 @ApiTags('Workout Sessions')
 @ApiBearerAuth()
@@ -49,8 +53,16 @@ export class WorkoutSessionsController {
   @ApiOkResponse({ type: [WorkoutSessionResponseDto] })
   async findAll(
     @CurrentUser() user: User,
+    @Query() query: WorkoutSessionsQueryDto,
   ): Promise<WorkoutSessionResponseDto[]> {
-    return this.service.findByUserId(user.id);
+    const status = query.status
+      ? query.status.split(',').map((s) => s.trim())
+      : undefined;
+    return this.service.findByUserId(user.id, {
+      limit: query.limit,
+      status,
+      sort: query.sort,
+    });
   }
 
   @Get(':id')
@@ -73,6 +85,32 @@ export class WorkoutSessionsController {
     @Body() dto: CreateWorkoutSessionDto,
   ): Promise<WorkoutSessionResponseDto> {
     return this.service.create(user.id, dto);
+  }
+
+  @Post(':id/complete')
+  @ApiOperation({ summary: 'Complete a workout session with actual set data' })
+  @ApiParam({ name: 'id' })
+  @ApiOkResponse({ type: WorkoutSessionResponseDto })
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  async complete(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: CompleteSessionDto,
+  ): Promise<WorkoutSessionResponseDto> {
+    return this.service.complete(user.id, id, dto);
+  }
+
+  @Post(':id/skip')
+  @ApiOperation({ summary: 'Skip a planned workout session' })
+  @ApiParam({ name: 'id' })
+  @ApiOkResponse({ type: WorkoutSessionResponseDto })
+  @UsePipes(new ValidationPipe({ whitelist: true }))
+  async skip(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto?: SkipSessionDto,
+  ): Promise<WorkoutSessionResponseDto> {
+    return this.service.skip(user.id, id, dto?.reschedule);
   }
 
   @Patch(':id')

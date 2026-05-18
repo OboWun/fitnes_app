@@ -4,6 +4,7 @@ import type {
   WorkoutMILPInput,
   WorkoutMILPOutput,
 } from './workout-milp.service.js';
+import { SetPlannerService } from '../workout-sessions/set-planner.service.js';
 import {
   TRAINING_BLOCKS_REPOSITORY,
   WORKOUT_SESSIONS_REPOSITORY,
@@ -238,6 +239,7 @@ export interface WeeklyProcessOutput {
 export class WeeklyProcessMilpService {
   constructor(
     private readonly workoutMilpService: WorkoutMilpService,
+    private readonly setPlannerService: SetPlannerService,
     @Inject(TRAINING_BLOCKS_REPOSITORY)
     private readonly blocksRepository: ITrainingBlocksRepository,
     @Inject(WORKOUT_SESSIONS_REPOSITORY)
@@ -394,6 +396,16 @@ export class WeeklyProcessMilpService {
           order: e.order,
         })),
       });
+    }
+
+    const firstPlanned = await this.sessionsRepository.findNextPlannedByUserId(input.userId);
+    if (firstPlanned) {
+      try {
+        await this.setPlannerService.planSetsForSession(firstPlanned);
+      } catch (e) {
+        const err = e as Error;
+        console.warn(`SetPlanner failed for session ${firstPlanned.id}: ${err.message}`);
+      }
     }
 
     return {

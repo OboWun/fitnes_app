@@ -36,6 +36,7 @@ backend/
 │   ├── main.ts                 # Bootstrap, dotenv, express.static, Swagger
 │   ├── app.module.ts           # Root module, imports DatabaseModule + все feature modules
 │   ├── app.controller.ts       # GET / — health check
+│   ├── app.service.ts          # AppService (stub)
 │   │
 │   ├── common/
 │   │   ├── database/           # DatabaseModule (global), DatabaseService (pg.Pool)
@@ -72,6 +73,13 @@ backend/
 │   ├── muscles/                # Мышцы (+ антагонисты)
 │   ├── contraindications/      # Противопоказания
 │   │
+│   ├── equipment-presets/      # Пресеты оборудования (системные + пользовательские)
+│   │   ├── equipment-presets.module.ts
+│   │   ├── equipment-presets.controller.ts  # GET system, CRUD user presets, clone
+│   │   ├── equipment-presets.service.ts
+│   │   ├── equipment-presets-sql.repository.ts
+│   │   └── dto/
+│   │
 │   ├── workout-templates/      # Шаблоны тренировок + расписание
 │   │   ├── workout-templates.module.ts
 │   │   ├── workout-templates.controller.ts
@@ -86,13 +94,17 @@ backend/
 │   │
 │   ├── workout-sessions/       # Тренировочные сессии внутри блоков
 │   │   ├── workout-sessions.module.ts
+│   │   ├── workout-sessions.controller.ts  # CRUD + POST /:id/complete, POST /:id/skip
+│   │   ├── workout-sessions.service.ts     # complete(), skip(), reschedule()
 │   │   ├── workout-sessions-sql.repository.ts
-│   │   └── ...
+│   │   ├── set-planner.service.ts          # Per-set planned weight prediction
+│   │   ├── cron/auto-skip.cron.ts          # Auto-skip stale planned sessions
+│   │   └── dto/
 │   │
 │   ├── workout-milp/           # MILP-оптимизация тренировок
 │   │   ├── workout-milp.module.ts
-│   │   ├── workout-milp.controller.ts    # POST /generate, POST /weekly-plan
-│   │   ├── workout-milp.service.ts        # LP solver, веса, fallback, weekly volume
+│   │   ├── workout-milp.controller.ts    # POST /generate, POST /metrics, POST /weekly-plan
+│   │   ├── workout-milp.service.ts        # LP solver, веса, fallback, weekly volume, metrics
 │   │   ├── weekly-process-milp.service.ts # Сплиты, распределение объёма, день недели
 │   │   └── dto/
 │   │
@@ -101,6 +113,12 @@ backend/
 │       ├── workout-dialog.controller.ts   # POST /start, POST /:id/answer, GET /:id
 │       ├── workout-dialog.service.ts      # Step engine, skip logic, Russian texts
 │       ├── workout-dialogs-sql.repository.ts
+│       └── dto/
+│
+│   └── home/                    # Главная страница мобильного приложения
+│       ├── home.module.ts
+│       ├── home.controller.ts   # GET /home/data
+│       ├── home-data.service.ts
 │       └── dto/
 │
 ├── .env                        # Переменные окружения (gitignored)
@@ -120,6 +138,11 @@ backend/
 8. **Weekly volume tracking** — отслеживание накопленного объёма по мышцам за неделю
 9. **Variable sets** — compound упражнения получают больше подходов чем isolation
 10. **Dialog state machine** — пошаговый сбор параметров с skip-логикой
+11. **Self-providing repos** — `WorkoutMilpModule`, `WorkoutDialogModule`, `EquipmentPresetsModule` не импортируют чужие модули, а самостоятельно регистрируют чужие `*SqlRepository` классы как свои провайдеры
+12. **Metrics endpoint** — `POST /workout-milp/metrics` вычисляет метрики (тоннаж, калории, fatigue index) для произвольного набора упражнений
+13. **Set Planner** — `SetPlannerService` generates per-set planned data (warmup + working weights) based on exercise history, e1RM estimation, RPE-based progression
+14. **Auto-skip cron** — `@nestjs/schedule` cron job at midnight auto-skips stale planned sessions
+15. **Self-providing repos** (extended) — `WorkoutSessionsModule` now also self-provides `ExercisesSqlRepository` and `UsersSqlRepository` for SetPlanner
 
 ## Module Dependencies
 
@@ -128,16 +151,18 @@ AppModule
 ├── DatabaseModule (global) — pg.Pool
 ├── AuthModule (imports UsersModule, PassportModule, JwtModule)
 ├── UsersModule
-├── ExercisesModule (imports MusclesModule, BodypartsModule, EquipmentsModule)
+├── ExercisesModule (imports AuthModule, MusclesModule, BodypartsModule, EquipmentsModule)
 ├── BodypartsModule
 ├── EquipmentsModule
 ├── MusclesModule
 ├── ContraindicationsModule
+├── EquipmentPresetsModule (самопробрасывает EquipmentsSqlRepository)
 ├── WorkoutTemplatesModule
 ├── TrainingBlocksModule
-├── WorkoutSessionsModule
-├── WorkoutMilpModule
-└── WorkoutDialogModule
+├── WorkoutSessionsModule (самопробрасывает ExercisesSqlRepository + UsersSqlRepository для SetPlanner, ScheduleModule.forRoot)
+├── WorkoutMilpModule (самопробрасывает 6 чужих SqlRepository)
+├── WorkoutDialogModule (самопробрасывает 3 чужих SqlRepository)
+├── HomeModule (самопробрасывает TrainingBlocksSqlRepository + WorkoutSessionsSqlRepository)
 ```
 
 ## Config

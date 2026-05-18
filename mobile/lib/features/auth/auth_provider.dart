@@ -18,7 +18,25 @@ class Auth extends _$Auth {
     state = const AuthState(status: AuthStatus.loading);
 
     try {
+      final storage = ref.read(authStorageProvider);
       final repository = ref.read(authRepositoryProvider);
+
+      if (storage.isAuthenticated) {
+        try {
+          final user = await repository.getProfile();
+          if (user.isProfileComplete) {
+            state = AuthState(
+              status: AuthStatus.authenticated,
+              user: user,
+              accessToken: storage.accessToken,
+            );
+            return;
+          }
+        } catch (_) {
+          // Token expired, fall through to device auth
+        }
+      }
+
       final result = await repository.authenticate();
       final user = result.user;
 

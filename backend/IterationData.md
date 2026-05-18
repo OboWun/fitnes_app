@@ -52,6 +52,30 @@
 - EXPERIENCE_PRESETS с weeklyVolumeScale (beginner=0.6, intermediate=1.0, advanced=1.4)
 - SETS_BY_ROLE + SETS_GOAL_MODIFIER для variable sets
 
-## Итерация 5: Адаптивный контур обновления модели — ⏳ НЕ НАЧАТА
+## Итерация 5: Per-Set Tracking + Set Planner — ✅ ЗАВЕРШЕНА
+
+**Статус:** Реализовано в `workout-sessions/set-planner.service.ts`, `workout-sessions-sql.repository.ts`, `workout-sessions.controller.ts`.
+
+**Что сделано:**
+- `workout_session_sets` таблица — per-set planned + actual (weight_kg, reps, duration_sec, distance_m, rpe)
+- `SetPlannerService` — генерация planned-сетов при создании сессии:
+  - Compound (squat/press/pull/hinge/row/lunge): 3 warmup + N working sets
+  - Isolation: working sets only
+  - Cardio (locomotion): 1 set с duration + distance
+  - Bodyweight: planned_weight = user.weight
+- Weight prediction: e1RM из последних 5 completed сессий
+- Progression: RPE ≤ 7 → +2.5/+5 kg, RPE ≥ 9 → без прогрессии
+- `POST /workout-sessions/:id/complete` — actual-данные разом, триггер SetPlanner для следующей
+- `POST /workout-sessions/:id/skip` — с опциональным reschedule на другой день
+- Auto-skip cron: устаревшие planned → skipped (ежедневно в полночь)
+- Response DTO обогащён `setDetails[]` для каждого упражнения
+- MILP интеграция: SetPlanner вызывается для первой сессии при weekly plan
+
+**Связь с Direction B (Performance Log):**
+- `workout_session_sets` с actual-данными — основа для future ML-модели предсказания весов
+- `findExerciseHistory()` уже собирает последние 5 completed сетов
+- `applyFatigueAdjustment()` — stub для будущей интеграции ML-модели
+
+## Итерация 6: Адаптивный контур обновления модели — ⏳ НЕ НАЧАТА
 
 **Что нужно:** история завершённых тренировок, RPE, soreness, readiness, pain, technique, фактический объём и длительность. Пересчёт priors после каждой недели.

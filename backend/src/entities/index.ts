@@ -26,3 +26,15 @@ export type {
 } from './workout-session.entity.js';
 export type { WorkoutDialog } from './workout-dialog.entity.js';
 export type { EquipmentPreset } from './equipment-preset.entity.js';
+export type { WeightLog } from './weight-log.entity.js';
+export type {
+  WorkoutSessionSet,
+  SetType,
+  MeasurementType,
+} from './workout-session-set.entity.js';
+export {
+  isCompoundExercise,
+  getMeasurementType,
+  COMPOUND_PATTERNS,
+  CARDIO_PATTERNS,
+} from './workout-session-set.entity.js';

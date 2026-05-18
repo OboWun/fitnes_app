@@ -58,12 +58,38 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             backgroundColor: Colors.transparent,
             elevation: 0,
             leading: const SizedBox.shrink(),
-            flexibleSpace: _StepFlexibleSpace(
-              currentStep: state.currentStep,
-              totalSteps: state.totalSteps,
+            flexibleSpace: GradientFlexibleSpace(
               expandedHeight: _expandedHeight,
+              expandedChild: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Image.asset(
+                  _imageForStep(state.currentStep),
+                  key: ValueKey(state.currentStep),
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => _StepFallbackIcon(
+                    step: state.currentStep,
+                  ),
+                ),
+              ),
+              collapsedChild: Center(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      _iconForStep(state.currentStep),
+                      size: 28,
+                      color: AppColors.whiteColor,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(
+                      'Шаг ${state.currentStep + 1} из ${state.totalSteps}',
+                      style: AppTypography.mediumTextSemiBold
+                          .copyWith(color: AppColors.whiteColor),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            
           ),
           SliverPadding(
              padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
@@ -91,87 +117,20 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   }
 }
 
-class _StepFlexibleSpace extends StatelessWidget {
-  final int currentStep;
-  final int totalSteps;
-  final double expandedHeight;
+String _imageForStep(int step) {
+  final imageStep = (step % 5) + 1;
+  return 'assets/images/profile_$imageStep.png';
+}
 
-  const _StepFlexibleSpace({
-    required this.currentStep,
-    required this.totalSteps,
-    required this.expandedHeight,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final t = ((constraints.maxHeight - 60) /
-                (expandedHeight - 60))
-            .clamp(0.0, 1.0);
-
-        final isSmall = t < 0.6;
-        return Container(
-          decoration: const BoxDecoration(
-            gradient: AppGradients.blueLinear,
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(32), )
-          ),
-          child:  AnimatedSwitcher(
-           
-            duration: Durations.short3, child: Builder( key: ValueKey('$isSmall$currentStep'), builder: (_) {
-            if(isSmall) {
-              return Center(
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          _iconForStep(currentStep),
-                          size: 28,
-                          color: AppColors.whiteColor,
-                        ),
-                        const SizedBox(width: 10),
-                        Text(
-                          'Шаг ${currentStep + 1} из $totalSteps',
-                          style: AppTypography.mediumTextSemiBold
-                              .copyWith(color: AppColors.whiteColor),
-                        ),
-                      ],
-                    ),
-                  );
-            }
-            return  Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Image.asset(
-                      _imageForStep(currentStep),
-                      key: ValueKey(currentStep),
-                      fit: BoxFit.contain,
-                      errorBuilder: (_, __, ___) =>
-                          _StepFallbackIcon(step: currentStep),
-                    ),
-                  );
-          },),),
-          
-        
-        );
-      },
-    );
-  }
-
-  String _imageForStep(int step) {
-    final imageStep = (step % 5) + 1;
-    return 'assets/images/profile_$imageStep.png';
-  }
-
-  IconData _iconForStep(int step) {
-    return switch (step) {
-      0 => Icons.person_outline,
-      1 => Icons.wc_outlined,
-      2 => Icons.cake_outlined,
-      3 => Icons.straighten_outlined,
-      4 => Icons.health_and_safety_outlined,
-      _ => Icons.fitness_center,
-    };
-  }
+IconData _iconForStep(int step) {
+  return switch (step) {
+    0 => Icons.person_outline,
+    1 => Icons.wc_outlined,
+    2 => Icons.cake_outlined,
+    3 => Icons.straighten_outlined,
+    4 => Icons.health_and_safety_outlined,
+    _ => Icons.fitness_center,
+  };
 }
 
 class _StepFallbackIcon extends StatelessWidget {
@@ -181,14 +140,7 @@ class _StepFallbackIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icon = switch (step) {
-      0 => Icons.person_outline,
-      1 => Icons.wc_outlined,
-      2 => Icons.cake_outlined,
-      3 => Icons.straighten_outlined,
-      4 => Icons.health_and_safety_outlined,
-      _ => Icons.fitness_center,
-    };
+    final icon = _iconForStep(step);
 
     return Container(
       margin: const EdgeInsets.all(40),

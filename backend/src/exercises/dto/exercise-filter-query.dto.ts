@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsOptional, IsString } from 'class-validator';
 import { Transform } from 'class-transformer';
 import { PaginationQueryDto } from '../../common/dto/index.js';
 
@@ -55,4 +55,13 @@ export class ExerciseFilterQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Sort by user accessibility (uses profile contraindications). Safe exercises first, forbidden last',
+  })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  isPersonal?: boolean;
 }

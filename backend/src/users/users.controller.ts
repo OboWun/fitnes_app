@@ -1,4 +1,11 @@
-import { Controller, Get, Patch, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Patch,
+  Body,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -11,6 +18,8 @@ import type { User } from '../entities/index.js';
 import { UsersService } from './users.service.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import { UserProfileResponseDto } from './dto/user-profile-response.dto.js';
+import { WeightHistoryQueryDto } from './dto/weight-history-query.dto.js';
+import { WeightLogResponseDto } from './dto/weight-log-response.dto.js';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -58,7 +67,29 @@ export class UsersController {
         metadata: { ...(user.metadata ?? {}), ...metadataUpdate },
       }),
     });
+
+    if (dto.weight !== undefined) {
+      await this.usersService.logWeight(user.id, dto.weight);
+    }
+
     return this.toResponseDto(updated!);
+  }
+
+  @Get('weight-history')
+  @ApiOperation({ summary: 'Get weight history' })
+  @ApiOkResponse({ type: [WeightLogResponseDto] })
+  async getWeightHistory(
+    @CurrentUser() user: User,
+    @Query() query: WeightHistoryQueryDto,
+  ): Promise<WeightLogResponseDto[]> {
+    const logs = await this.usersService.getWeightHistory(
+      user.id,
+      query.period ?? 'all',
+    );
+    return logs.map((l) => ({
+      date: l.createdAt.slice(0, 10),
+      weight: l.weight,
+    }));
   }
 
   private toResponseDto(user: User): UserProfileResponseDto {

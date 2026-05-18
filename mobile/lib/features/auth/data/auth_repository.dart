@@ -78,6 +78,11 @@ class AuthRepository {
     return UserModel.fromJson(response);
   }
 
+  Future<UserModel> getProfile() async {
+    final response = await _api.getProfile();
+    return UserModel.fromJson(response);
+  }
+
   Future<List<Map<String, dynamic>>> getContraindications() async {
     return _api.getContraindications();
   }

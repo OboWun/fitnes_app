@@ -11,11 +11,23 @@ import type { IBodypartsRepository } from '../common/repositories/index.js';
 import { EQUIPMENTS_REPOSITORY } from '../common/repositories/index.js';
 import type { IEquipmentsRepository } from '../common/repositories/index.js';
 import { PaginatedResponseDto } from '../common/dto/index.js';
-import type { Exercise } from '../entities/index.js';
-import type { ExerciseResponseDto } from './dto/exercise-response.dto.js';
+import type { Exercise, User } from '../entities/index.js';
+import type { ExerciseShortResponseDto } from './dto/exercise-short-response.dto.js';
+import type { ExerciseDetailResponseDto } from './dto/exercise-detail-response.dto.js';
 import type { Muscle } from '../entities/index.js';
 import type { Bodypart } from '../entities/index.js';
 import type { Equipment } from '../entities/index.js';
+
+type ContraindicationLevel =
+  | 'forbidden'
+  | 'not_recommended'
+  | 'low_weight';
+
+const SEVERITY_ORDER: Record<ContraindicationLevel, number> = {
+  low_weight: 1,
+  not_recommended: 2,
+  forbidden: 3,
+};
 
 @Injectable()
 export class ExercisesService {
@@ -38,25 +50,81 @@ export class ExercisesService {
     page: number,
     limit: number,
     filters: ExerciseFilterParams,
-  ): Promise<PaginatedResponseDto<ExerciseResponseDto>> {
+    user?: User,
+    isPersonal?: boolean,
+  ): Promise<PaginatedResponseDto<ExerciseShortResponseDto>> {
+    const userContra = isPersonal
+      ? (user?.contraindications ?? [])
+      : [];
+
     const result = await this.exercisesRepository.findPaginated(
       page,
       limit,
       filters,
     );
-    return new PaginatedResponseDto(
-      await Promise.all(result.data.map((e) => this.toResponseDto(e))),
-      result.total,
-      page,
-      limit,
+
+    let exercises = await Promise.all(
+      result.data.map((e) => this.toShortDto(e, userContra)),
     );
+
+    if (isPersonal && userContra.length > 0) {
+      exercises = this.sortByAccessibility(exercises);
+    }
+
+    return new PaginatedResponseDto(exercises, result.total, page, limit);
+  }
+
+  async findOne(slug: string, user?: User): Promise<ExerciseDetailResponseDto> {
+    const exercise = await this.exercisesRepository.findBySlug(slug);
+    if (!exercise) {
+      throw new NotFoundException(`Exercise with slug "${slug}" not found`);
+    }
+
+    await this.ensureCache();
+
+    const userContraSlugs = new Set(user?.contraindications ?? []);
+
+    const userContraindications =
+      exercise.contraindications?.filter((c) => userContraSlugs.has(c.slug)) ??
+      [];
+
+    const similarResult = await this.exercisesRepository.findSimilar(slug, 1, 5);
+    const userContra = user?.contraindications ?? [];
+    const similarExercises = await Promise.all(
+      similarResult.data.map((e) => this.toShortDto(e, userContra)),
+    );
+
+    return {
+      slug: exercise.slug,
+      name: exercise.name,
+      imageUrl: this.resolveGifUrl(exercise.gifUrl),
+      description: exercise.description,
+      exerciseType: exercise.exerciseType,
+      difficulty: exercise.difficulty,
+      movementPattern: exercise.movementPattern,
+      confidence: exercise.confidence,
+      instructions: exercise.instructions,
+      targetMuscles: this.resolveMuscles(exercise.targetMuscles),
+      secondaryMuscles: exercise.secondaryMuscles
+        ? this.resolveMuscles(exercise.secondaryMuscles)
+        : undefined,
+      bodyParts: this.resolveBodyparts(exercise.bodyParts),
+      equipments: this.resolveEquipments(exercise.equipments),
+      variations: exercise.variations,
+      alias: exercise.alias,
+      metadata: exercise.metadata,
+      userContraindications:
+        userContraindications.length > 0 ? userContraindications : undefined,
+      similarExercises,
+    };
   }
 
   async findSimilar(
     slug: string,
     page: number,
     limit: number,
-  ): Promise<PaginatedResponseDto<ExerciseResponseDto>> {
+    user?: User,
+  ): Promise<PaginatedResponseDto<ExerciseShortResponseDto>> {
     const exercise = await this.exercisesRepository.findBySlug(slug);
     if (!exercise) {
       throw new NotFoundException(`Exercise with slug "${slug}" not found`);
@@ -67,8 +135,9 @@ export class ExercisesService {
       page,
       limit,
     );
+    const userContra = user?.contraindications ?? [];
     return new PaginatedResponseDto(
-      await Promise.all(result.data.map((e) => this.toResponseDto(e))),
+      await Promise.all(result.data.map((e) => this.toShortDto(e, userContra))),
       result.total,
       page,
       limit,
@@ -79,7 +148,8 @@ export class ExercisesService {
     slug: string,
     page: number,
     limit: number,
-  ): Promise<PaginatedResponseDto<ExerciseResponseDto>> {
+    user?: User,
+  ): Promise<PaginatedResponseDto<ExerciseShortResponseDto>> {
     const exercise = await this.exercisesRepository.findBySlug(slug);
     if (!exercise) {
       throw new NotFoundException(`Exercise with slug "${slug}" not found`);
@@ -102,12 +172,67 @@ export class ExercisesService {
       page,
       limit,
     );
+    const userContra = user?.contraindications ?? [];
     return new PaginatedResponseDto(
-      await Promise.all(result.data.map((e) => this.toResponseDto(e))),
+      await Promise.all(result.data.map((e) => this.toShortDto(e, userContra))),
       result.total,
       page,
       limit,
     );
+  }
+
+  private computeAccessibility(
+    exercise: Exercise,
+    userContraindications: string[],
+  ): ContraindicationLevel | null {
+    if (!userContraindications.length || !exercise.contraindications?.length) {
+      return null;
+    }
+    const userSet = new Set(userContraindications);
+    let worst: ContraindicationLevel | null = null;
+    let worstScore = 0;
+    for (const c of exercise.contraindications) {
+      if (userSet.has(c.slug)) {
+        const score = SEVERITY_ORDER[c.severity] ?? 0;
+        if (score > worstScore) {
+          worstScore = score;
+          worst = c.severity;
+        }
+      }
+    }
+    return worst;
+  }
+
+  private sortByAccessibility(
+    exercises: ExerciseShortResponseDto[],
+  ): ExerciseShortResponseDto[] {
+    return exercises.sort((a, b) => {
+      const aScore = a.contraindication
+        ? SEVERITY_ORDER[a.contraindication] ?? 0
+        : 0;
+      const bScore = b.contraindication
+        ? SEVERITY_ORDER[b.contraindication] ?? 0
+        : 0;
+      return aScore - bScore;
+    });
+  }
+
+  private async toShortDto(
+    exercise: Exercise,
+    userContraindications: string[],
+  ): Promise<ExerciseShortResponseDto> {
+    await this.ensureCache();
+    return {
+      slug: exercise.slug,
+      name: exercise.name,
+      imageUrl: this.resolveGifUrl(exercise.gifUrl),
+      description: exercise.description,
+      equipments: this.resolveEquipments(exercise.equipments),
+      contraindication:
+        userContraindications.length > 0
+          ? this.computeAccessibility(exercise, userContraindications)
+          : null,
+    };
   }
 
   private async ensureCache(): Promise<void> {
@@ -128,38 +253,21 @@ export class ExercisesService {
     return `${base}${gifUrl.startsWith('/') ? '' : '/'}${gifUrl}`;
   }
 
-  private async toResponseDto(
-    exercise: Exercise,
-  ): Promise<ExerciseResponseDto> {
-    await this.ensureCache();
+  private resolveMuscles(slugs: string[]) {
+    return slugs
+      .map((slug) => this.musclesCache!.find((m) => m.slug === slug))
+      .filter((m): m is NonNullable<typeof m> => m != null);
+  }
 
-    return {
-      exerciseId: exercise.exerciseId,
-      name: exercise.name,
-      alias: exercise.alias,
-      exerciseType: exercise.exerciseType,
-      description: exercise.description,
-      confidence: exercise.confidence,
-      difficulty: exercise.difficulty,
-      movementPattern: exercise.movementPattern,
-      variations: exercise.variations,
-      slug: exercise.slug,
-      gifUrl: this.resolveGifUrl(exercise.gifUrl),
-      targetMuscles: exercise.targetMuscles
-        .map((slug) => this.musclesCache!.find((m) => m.slug === slug))
-        .filter((m): m is NonNullable<typeof m> => m != null),
-      bodyParts: exercise.bodyParts
-        .map((slug) => this.bodypartsCache!.find((bp) => bp.slug === slug))
-        .filter((bp): bp is NonNullable<typeof bp> => bp != null),
-      equipments: exercise.equipments
-        .map((slug) => this.equipmentsCache!.find((eq) => eq.slug === slug))
-        .filter((eq): eq is NonNullable<typeof eq> => eq != null),
-      secondaryMuscles: exercise.secondaryMuscles
-        ?.map((slug) => this.musclesCache!.find((m) => m.slug === slug))
-        .filter((m): m is NonNullable<typeof m> => m != null),
-      instructions: exercise.instructions,
-      contraindications: exercise.contraindications,
-      metadata: exercise.metadata,
-    };
+  private resolveBodyparts(slugs: string[]) {
+    return slugs
+      .map((slug) => this.bodypartsCache!.find((bp) => bp.slug === slug))
+      .filter((bp): bp is NonNullable<typeof bp> => bp != null);
+  }
+
+  private resolveEquipments(slugs: string[]) {
+    return slugs
+      .map((slug) => this.equipmentsCache!.find((eq) => eq.slug === slug))
+      .filter((eq): eq is NonNullable<typeof eq> => eq != null);
   }
 }

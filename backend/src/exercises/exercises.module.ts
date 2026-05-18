@@ -6,9 +6,10 @@ import { EXERCISES_REPOSITORY } from '../common/repositories/index.js';
 import { MusclesModule } from '../muscles/muscles.module.js';
 import { BodypartsModule } from '../bodyparts/bodyparts.module.js';
 import { EquipmentsModule } from '../equipments/equipments.module.js';
+import { AuthModule } from '../auth/auth.module.js';
 
 @Module({
-  imports: [MusclesModule, BodypartsModule, EquipmentsModule],
+  imports: [AuthModule, MusclesModule, BodypartsModule, EquipmentsModule],
   controllers: [ExercisesController],
   providers: [
     ExercisesService,

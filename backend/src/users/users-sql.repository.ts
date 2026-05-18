@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { DatabaseService } from '../common/database/database.service.js';
-import type { User, UserMetadata } from '../entities/index.js';
-import type { IUsersRepository } from '../common/repositories/index.js';
+import type { User, UserMetadata, WeightLog } from '../entities/index.js';
+import type {
+  IUsersRepository,
+  WeightHistoryPeriod,
+} from '../common/repositories/index.js';
 
 interface UserRow {
   id: string;
@@ -128,5 +131,53 @@ export class UsersSqlRepository implements IUsersRepository {
       [userId],
     );
     return rows.map((r) => r.slug);
+  }
+
+  async logWeight(userId: string, weight: number): Promise<WeightLog> {
+    const row = await this.db.queryOne<{
+      id: string;
+      user_id: string;
+      weight: number;
+      created_at: Date;
+    }>(
+      `INSERT INTO weight_logs (user_id, weight) VALUES ($1, $2)
+       RETURNING id, user_id, weight, created_at`,
+      [userId, weight],
+    );
+    return {
+      id: row!.id,
+      userId: row!.user_id,
+      weight: Number(row!.weight),
+      createdAt: new Date(row!.created_at).toISOString(),
+    };
+  }
+
+  async getWeightHistory(
+    userId: string,
+    period: WeightHistoryPeriod,
+  ): Promise<WeightLog[]> {
+    let intervalSql = '';
+    if (period === 'week') intervalSql = "AND created_at >= NOW() - INTERVAL '7 days'";
+    else if (period === 'month')
+      intervalSql = "AND created_at >= NOW() - INTERVAL '30 days'";
+
+    const rows = await this.db.query<{
+      id: string;
+      user_id: string;
+      weight: number;
+      created_at: Date;
+    }>(
+      `SELECT id, user_id, weight, created_at
+       FROM weight_logs
+       WHERE user_id = $1 ${intervalSql}
+       ORDER BY created_at DESC`,
+      [userId],
+    );
+    return rows.map((r) => ({
+      id: r.id,
+      userId: r.user_id,
+      weight: Number(r.weight),
+      createdAt: new Date(r.created_at).toISOString(),
+    }));
   }
 }

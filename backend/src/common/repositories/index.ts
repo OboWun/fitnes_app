@@ -20,6 +20,7 @@ export {
 export {
   USERS_REPOSITORY,
   type IUsersRepository,
+  type WeightHistoryPeriod,
 } from './users.repository.interface.js';
 export {
   CONTRAINDICATIONS_REPOSITORY,
@@ -38,6 +39,7 @@ export {
 export {
   WORKOUT_SESSIONS_REPOSITORY,
   type IWorkoutSessionsRepository,
+  type WorkoutSessionsFilter,
 } from './workout-sessions.repository.interface.js';
 export {
   WORKOUT_DIALOGS_REPOSITORY,

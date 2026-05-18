@@ -15,7 +15,7 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final homeData = ref.watch(homeProvider);
+    final homeAsync = ref.watch(homeProvider);
 
     return Scaffold(
       backgroundColor: AppColors.whiteColor,
@@ -30,9 +30,9 @@ class HomePage extends ConsumerWidget {
               const SectionHeader(title: 'Тренировки'),
               const SizedBox(height: 16),
               const WeekCalendarSmart(),
-              if (homeData.todaySession != null) ...[
+              if (homeAsync.value?.todaySession != null) ...[
                 const SizedBox(height: 16),
-                WorkoutReminder(session: homeData.todaySession!),
+                WorkoutReminder(session: homeAsync.value!.todaySession!),
               ],
               const SizedBox(height: 12),
               const ViewAllLinkSmart(route: '/workouts'),

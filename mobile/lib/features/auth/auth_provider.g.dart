@@ -25,7 +25,7 @@ final contraindicationsProvider =
 // ignore: unused_element
 typedef ContraindicationsRef =
     AutoDisposeFutureProviderRef<List<Map<String, dynamic>>>;
-String _$authHash() => r'd3d636730b8939a4d98f99425066c5c8d94489c7';
+String _$authHash() => r'5d02c0a963fb921cedfd8d41cfa6861356bf31b2';
 
 /// See also [Auth].
 @ProviderFor(Auth)

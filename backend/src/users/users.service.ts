@@ -3,7 +3,9 @@ import type { User } from '../entities/index.js';
 import {
   USERS_REPOSITORY,
   type IUsersRepository,
+  type WeightHistoryPeriod,
 } from '../common/repositories/index.js';
+import type { WeightLog } from '../entities/index.js';
 
 @Injectable()
 export class UsersService {
@@ -29,5 +31,16 @@ export class UsersService {
     data: Partial<Omit<User, 'id' | 'deviceId' | 'createdAt'>>,
   ): Promise<User | undefined> {
     return this.usersRepository.update(id, data);
+  }
+
+  logWeight(userId: string, weight: number): Promise<WeightLog> {
+    return this.usersRepository.logWeight(userId, weight);
+  }
+
+  getWeightHistory(
+    userId: string,
+    period: WeightHistoryPeriod,
+  ): Promise<WeightLog[]> {
+    return this.usersRepository.getWeightHistory(userId, period);
   }
 }

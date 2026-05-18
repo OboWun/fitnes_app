@@ -15,6 +15,7 @@ import { WorkoutSessionsModule } from './workout-sessions/workout-sessions.modul
 import { WorkoutMilpModule } from './workout-milp/workout-milp.module.js';
 import { WorkoutDialogModule } from './workout-dialog/workout-dialog.module.js';
 import { EquipmentPresetsModule } from './equipment-presets/equipment-presets.module.js';
+import { HomeModule } from './home/home.module.js';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { EquipmentPresetsModule } from './equipment-presets/equipment-presets.mo
     WorkoutMilpModule,
     WorkoutDialogModule,
     EquipmentPresetsModule,
+    HomeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

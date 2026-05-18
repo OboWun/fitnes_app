@@ -1,3 +1,5 @@
+export 'data/home_api.dart';
+export 'data/home_repository.dart';
 export 'home_provider.dart';
 export 'domain/home_data.dart';
 export 'domain/week_session.dart';

@@ -557,6 +557,70 @@ class _ExerciseGridLoading extends StatelessWidget {
 
 ---
 
+## Правило 11. Навигация — context.push()
+
+**Приоритет:** `context.push()` > `context.go()`
+
+`context.push()` добавляет маршрут в стек, позволяя пользователю вернуться назад системной кнопкой. `context.go()` заменяет стек — пользователь теряет возможность навигации назад.
+
+### Когда использовать push:
+- Переход на вложенную страницу (деталка, профиль, настройки)
+- Любой переход, откуда пользователь ожидает вернуться назад
+
+### Когда можно использовать go:
+- После успешного логина → замена стека на главный экран
+- После завершения onboarding → замена стека на home
+- Сброс навигации (logout → auth)
+
+```dart
+// ✅ Правильно
+context.push('/exercises');
+context.push('/profile');
+
+// ❌ Неправильно
+context.go('/exercises');
+context.go('/profile');
+```
+
+---
+
+## Правило 12. Мок-данные — только в API-слое
+
+Все mock-данные находятся **только в `_api.dart`** (в методах API-класса).
+Provider'ы и Repository **никогда** не содержат mock-логику.
+
+### Иерархия:
+1. `_api.dart` — mock-ответы (до подключения реального бэкенда)
+2. `_repository.dart` — бизнес-логика, маппинг, error handling (без mock)
+3. `*_provider.dart` — state management (без mock)
+
+```dart
+// ✅ Правильно — mock в API
+class ProfileApi {
+  final Dio _dio;
+
+  Future<List<Map<String, dynamic>>> getWeightHistory(String period) async {
+    // TODO: подключить реальный endpoint
+    return _mockWeightHistory(period);
+  }
+
+  List<Map<String, dynamic>> _mockWeightHistory(String period) {
+    return [
+      {'date': '2026-05-17', 'weight': 75.0},
+      {'date': '2026-05-16', 'weight': 75.5},
+    ];
+  }
+}
+
+// ❌ Неправильно — mock в provider
+@riverpod
+Future<List<WeightRecord>> weightHistory(Ref ref) async {
+  return [WeightRecord(date: DateTime.now(), weight: 75)]; // ЗАПРЕЩЕНО
+}
+```
+
+---
+
 ## Планируемые инфраструктурные элементы
 
 ### ErrorHandlingMixin
@@ -573,6 +637,142 @@ class _ExerciseGridLoading extends StatelessWidget {
 ### SliverGap, SliverDecoratedBox
 - Файл: `design_system/widgets/sliver_gap.dart`, `design_system/widgets/sliver_decorated_box.dart`
 - Утилиты для работы со sliver-контекстом
+
+---
+
+## Готовые виджеты design_system
+
+### GradientFlexibleSpace
+
+Файл: `design_system/widgets/gradient_flexible_space.dart`
+
+Переиспользуемый виджет для `SliverAppBar.flexibleSpace`. Обеспечивает единообразный паттерн: gradient-фон с анимированным переключением между раскрытым (expanded) и свёрнутым (collapsed) состояниями.
+
+**Используется в:** OnboardingPage, ProfilePage, EquipmentDetailPage, PresetDetailPage.
+
+```dart
+GradientFlexibleSpace(
+  expandedHeight: expandedHeight,
+  expandedChild: Padding(
+    padding: const EdgeInsets.all(24),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Container(
+          width: 80, height: 80,
+          decoration: BoxDecoration(
+            color: AppColors.whiteColor.withValues(alpha: 0.25),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: const Icon(Icons.person, size: 48, color: AppColors.whiteColor),
+        ),
+        const SizedBox(height: 12),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(name, style: AppTypography.h3Bold.copyWith(color: AppColors.whiteColor)),
+        ),
+      ],
+    ),
+  ),
+  collapsedChild: Center(
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.person_outline, size: 24, color: AppColors.whiteColor),
+        const SizedBox(width: 8),
+        Text(name, style: AppTypography.mediumTextSemiBold.copyWith(color: AppColors.whiteColor)),
+      ],
+    ),
+  ),
+)
+```
+
+**Параметры:**
+
+| Параметр | Тип | По умолчанию | Описание |
+|----------|-----|-------------|----------|
+| `expandedHeight` | `double` | — (required) | Высота раскрытого appBar |
+| `expandedChild` | `Widget` | — (required) | Контент при раскрытии |
+| `collapsedChild` | `Widget` | — (required) | Контент при схлопывании |
+| `collapsedHeight` | `double` | `60` | Высота свёрнутого appBar |
+| `gradient` | `LinearGradient` | `AppGradients.blueLinear` | Градиент фона |
+| `borderRadius` | `BorderRadius?` | `bottom: 32` | Скругление контейнера |
+| `collapseThreshold` | `double` | `0.6` | Порог переключения (0..1) |
+
+**Правило:** Для новых страниц с SliverAppBar + gradient-фоном **всегда** использовать `GradientFlexibleSpace` вместо ручного LayoutBuilder + Opacity/Stack.
+
+---
+
+## Правило 13. Списки и пагинация
+
+### Для пагинированных списков (данные подгружаются страницами с бэкенда):
+- Использовать `infinite_scroll_pagination` (Flutter Favorite)
+- `PagingController` живёт на странице (не в riverpod provider)
+- Provider предоставляет данные по запрошенной странице
+- `addAutomaticKeepAlives: false` на `PagedListView` / `PagedSliverList`
+
+### Для обычных списков (все данные уже в памяти):
+- `ListView.builder` / `ListView.separated` с `addAutomaticKeepAlives: false`
+- `shrinkWrap: true` — только если список вложен в другой ScrollView и известно что элементов мало
+
+### Запрещено:
+- `Column` + `SingleChildScrollView` + `ListView.builder(shrinkWrap: true, NeverScrollableScrollPhysics)` — для списков с пагинацией или потенциально большим количеством элементов
+- Ручной `ScrollController.addListener` для детекции конца списка при наличии `infinite_scroll_pagination`
+
+### Разрешено:
+- `Column` + `Expanded(child: ListView / PagedListView)` — для фиксированной шапки над списком
+- `CustomScrollView` + slivers — для сложных страниц
+
+### Пример пагинированного списка:
+
+```dart
+class ExercisesPage extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<ExercisesPage> createState() => _ExercisesPageState();
+}
+
+class _ExercisesPageState extends ConsumerState<ExercisesPage> {
+  late final _pagingController = PagingController<int, ExerciseShort>(
+    getNextPageKey: (state) =>
+        state.lastPageIsEmpty ? null : state.nextIntPageKey,
+    fetchPage: (pageKey) => _fetchPage(pageKey),
+  );
+
+  Future<List<ExerciseShort>> _fetchPage(int pageKey) async {
+    final repo = ref.read(exerciseRepositoryProvider);
+    final result = await repo.getExercises(page: pageKey, limit: 20, ...);
+    return result.data;
+  }
+
+  @override
+  void dispose() {
+    _pagingController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: PagingListener(
+        controller: _pagingController,
+        builder: (context, state, fetchNextPage) => PagedListView<int, ExerciseShort>(
+          state: state,
+          fetchNextPage: fetchNextPage,
+          addAutomaticKeepAlives: false,
+          builderDelegate: PagedChildBuilderDelegate(
+            itemBuilder: (context, item, index) => ExerciseListItem(
+              exercise: item,
+              onTap: () => context.push('/exercises/${item.slug}'),
+            ),
+            firstPageProgressIndicatorBuilder: () => _LoadingList(),
+            newPageProgressIndicatorBuilder: () => _LoadingItem(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+```
 
 ---
 

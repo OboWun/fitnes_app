@@ -3,6 +3,7 @@ import type {
   WorkoutSessionMetadata,
   WorkoutSessionExerciseMetadata,
 } from '../../entities/index.js';
+import { SetResponseDto } from './set-response.dto.js';
 
 export class SessionExerciseResponseDto {
   @ApiProperty()
@@ -16,6 +17,9 @@ export class SessionExerciseResponseDto {
 
   @ApiPropertyOptional()
   metadata?: WorkoutSessionExerciseMetadata;
+
+  @ApiPropertyOptional({ type: [SetResponseDto] })
+  setDetails?: SetResponseDto[];
 }
 
 export class WorkoutSessionResponseDto {

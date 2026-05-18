@@ -32,6 +32,35 @@ Document the current state of Workout MILP implementation, the solved problems, 
 - Different flows for `generate` vs `weekly` plan type
 - Returns collected params at completion — client calls generate/weekly-plan separately
 
+### Home Data (`GET /home/data`)
+- Composite endpoint for mobile app home screen
+- Aggregates active TrainingBlock + week sessions + today session
+- `currentWeek` computed from block ID (base36 decode of Date.now timestamp)
+- Session type → Russian description mapping (push/pull/legs/upper/lower/full_body)
+
+### Weight History (`GET /users/weight-history`)
+- `weight_logs` table tracks weight changes over time
+- Auto-logged on every `PATCH /users/profile` with `weight` field
+- Filterable by period: `week` (7d), `month` (30d), `all`
+
+### Workout Sessions Filtering (`GET /workout-sessions`)
+- Query params: `limit`, `status` (CSV), `sort` (`id_desc`/`id_asc`)
+- Sorting by `id` (lexicographic ≈ chronological since IDs contain Date.now)
+- No `created_at` column in `workout_sessions` table
+
+### Session Logging + Set Planner
+- New table `workout_session_sets` — per-set planned + actual data (weight, reps, duration, distance, RPE)
+- `SetPlannerService` generates planned sets when session is created:
+  - Compound exercises (squat/press/pull/hinge/row/lunge): 3 warmup sets (bar × 15, 50% × 10, 75% × 8) + working sets
+  - Isolation: working sets only, no warmup
+  - Cardio (locomotion pattern): 1 set with duration + distance
+  - Bodyweight exercises: planned_weight = user's bodyweight from profile
+- Weight prediction: e1RM from last 5 completed sessions, progression +2.5/+5 kg if RPE ≤ 7, no change if RPE ≥ 9
+- Flow: MILP creates week sessions → SetPlanner plans sets for first planned → user completes (POST /:id/complete) → SetPlanner plans next planned
+- Auto-skip cron (midnight daily): stale planned sessions → status = skipped
+- Skip with reschedule: duplicate session on next available day
+- Statuses: planned → completed / skipped / replaced
+
 ## Key Constants (in `workout-milp.service.ts`)
 
 | Constant | Purpose |
@@ -59,10 +88,11 @@ Document the current state of Workout MILP implementation, the solved problems, 
 
 ## Remaining Tasks
 
-1. Fix unused `GENDER_FOCUS_RATIO` constant (either reference it or remove)
-2. Add `POST /workout-milp/metrics` endpoint (metrics DTO exists but endpoint not implemented)
-3. Broader testing with real DB data — validate workout quality across more scenarios
-4. Replace single exercise N+1 in `computeFatigueAndHistory` — currently queries exercise metadata per exercise
+1. Broader testing with real DB data — validate workout quality across more scenarios
+2. Replace single exercise N+1 in `computeFatigueAndHistory` — currently queries exercise metadata per exercise
+3. Populate `equipments.description` / `equipments.image_url` with real data (columns exist, values are `null`)
+4. Integrate ML model for weight prediction (see SET_PLANNER_ROADMAP.md)
+5. Fatigue-aware weight adjustment in SetPlanner (applyFatigueAdjustment is a stub)
 
 ## Validation Criteria (all passing)
 1. Given a chest/back focus → chest and back appear in result
@@ -78,3 +108,10 @@ Document the current state of Workout MILP implementation, the solved problems, 
 - `body weight` (with space) is the exact alias in the DB `equipments` table
 - Server runs on port 3001 (from `.env`), not 3000
 - Database name: `fitness_app`
+- `users.gender` column is used in code but missing from `schema.sql` — likely added via a separate migration
+- `GENDER_FOCUS_RATIO` constant does not exist — was removed or never added
+- `POST /workout-milp/metrics` is fully implemented — calls `milpService.computeMetrics()`
+- `workout_session_sets` table stores per-set planned + actual data, separate from `workout_session_exercises` (session structure)
+- SetPlanner uses `movement_pattern` to determine compound vs isolation (squat/press/pull/hinge/row/lunge = compound)
+- Bodyweight exercises: `planned_weight_kg` = `user.weight`, `actual_weight_kg` = bodyweight + added weight
+- `@nestjs/schedule` added as dependency for auto-skip cron

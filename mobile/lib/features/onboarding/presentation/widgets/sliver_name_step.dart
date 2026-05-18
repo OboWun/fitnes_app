@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/widgets/sliver_adapter.dart';
 import '../../../../core/widgets/sliver_decorated_box.dart';
 import '../../../../design_system/design_system.dart';
 

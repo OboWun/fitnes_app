@@ -196,6 +196,18 @@ CREATE INDEX idx_ws_block ON workout_sessions(block_id);
 CREATE INDEX idx_ws_user ON workout_sessions(user_id);
 CREATE INDEX idx_wse_session ON workout_session_exercises(session_id);
 
+ALTER TABLE equipments ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE equipments ADD COLUMN IF NOT EXISTS image_url TEXT;
+
+CREATE TABLE weight_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id VARCHAR(50) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  weight NUMERIC(5,2) NOT NULL CHECK (weight > 0 AND weight < 500),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_weight_logs_user_created ON weight_logs(user_id, created_at DESC);
+
 -- migration: add metadata to workout_templates
 ALTER TABLE workout_templates ADD COLUMN IF NOT EXISTS metadata JSONB DEFAULT '{}';
 

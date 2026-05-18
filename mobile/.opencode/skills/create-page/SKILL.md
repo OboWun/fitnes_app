@@ -223,6 +223,87 @@ export 'presentation/smart_widgets/exercise_card_smart.dart';
 // НЕ экспортируем: page, provider (они внутренние)
 ```
 
+## SliverAppBar + GradientFlexibleSpace
+
+Для страниц с `SliverAppBar` + gradient-фоном использовать `GradientFlexibleSpace` из `design_system/widgets/gradient_flexible_space.dart`.
+
+```dart
+SliverAppBar(
+  pinned: true,
+  expandedHeight: expandedHeight,
+  collapsedHeight: 60,
+  backgroundColor: Colors.transparent,
+  elevation: 0,
+  leading: const SizedBox.shrink(),
+  flexibleSpace: GradientFlexibleSpace(
+    expandedHeight: expandedHeight,
+    expandedChild: ...,  // крупный контент (иконка + название)
+    collapsedChild: ...,  // строка (иконка 24 + название)
+  ),
+),
+```
+
+Не создавать ручной `LayoutBuilder` + `Opacity`/`Stack` для flexibleSpace.
+
+## Пагинированные списки
+
+Для страниц с пагинацией (данные подгружаются страницами) использовать `infinite_scroll_pagination`:
+
+```dart
+class _ExercisesPageState extends ConsumerState<ExercisesPage> {
+  late final _pagingController = PagingController<int, ExerciseShort>(
+    getNextPageKey: (state) =>
+        state.lastPageIsEmpty ? null : state.nextIntPageKey,
+    fetchPage: (pageKey) => _fetchPage(pageKey),
+  );
+
+  Future<List<ExerciseShort>> _fetchPage(int pageKey) async {
+    final repo = ref.read(exerciseRepositoryProvider);
+    final result = await repo.getExercises(page: pageKey, limit: 20);
+    return result.data;
+  }
+
+  @override
+  void dispose() {
+    _pagingController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: PagingListener(
+        controller: _pagingController,
+        builder: (context, state, fetchNextPage) => PagedListView<int, ExerciseShort>(
+          state: state,
+          fetchNextPage: fetchNextPage,
+          addAutomaticKeepAlives: false,
+          builderDelegate: PagedChildBuilderDelegate(
+            itemBuilder: (context, item, index) => ExerciseListItem(
+              exercise: item,
+              onTap: () => context.push('/exercises/${item.slug}'),
+            ),
+            firstPageProgressIndicatorBuilder: () => _LoadingList(),
+            newPageProgressIndicatorBuilder: () => _LoadingItem(),
+          ),
+        ),
+      ),
+    );
+  }
+}
+```
+
+### Правила:
+- `PagingController` живёт на странице (не в provider)
+- `addAutomaticKeepAlives: false` на `PagedListView` / `PagedSliverList`
+- Provider предоставляет данные по запрошенной странице
+- Не использовать `ScrollController.addListener` для детекции конца списка
+- Не оборачивать `ListView` / `PagedListView` в `SingleChildScrollView`
+
+### Для обычных списков (все данные в памяти):
+- `ListView.builder` / `ListView.separated` с `addAutomaticKeepAlives: false`
+- WidgetContainer (skill `create-widget-container`) для небольших групп
+
 ## Структура фичи
 
 ```

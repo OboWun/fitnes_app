@@ -11,6 +11,8 @@ export interface WorkoutSessionMetadata {
   forbiddenExercises?: string[];
   allowedTimeDeviationMin?: number;
   allowedLoadDeviation?: number;
+  autoSkipped?: boolean;
+  rescheduledFrom?: string;
 }
 
 export interface WorkoutSession {

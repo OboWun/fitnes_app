@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../home_provider.dart';
 import '../widgets/week_calendar.dart';
@@ -12,36 +13,36 @@ class WeekCalendarSmart extends ConsumerStatefulWidget {
 }
 
 class _WeekCalendarSmartState extends ConsumerState<WeekCalendarSmart> {
-  late DateTime _currentWeekStart;
-  late DateTime _displayWeekStart;
+  DateTime? _displayWeekStart;
 
   static const int _maxWeeksForward = 4;
 
-  @override
-  void initState() {
-    super.initState();
+  DateTime get _currentWeekStart {
     final now = DateTime.now();
-    _currentWeekStart = now.subtract(Duration(days: now.weekday - 1));
-    _displayWeekStart = _currentWeekStart;
+    return DateTime(now.year, now.month, now.day - (now.weekday - 1));
   }
 
-  bool get _canGoBack => _displayWeekStart.isAfter(_currentWeekStart);
+  DateTime get _effectiveWeekStart =>
+      _displayWeekStart ?? _currentWeekStart;
+
+  bool get _canGoBack => _effectiveWeekStart.isAfter(_currentWeekStart);
 
   bool get _canGoForward {
     final maxForward =
         _currentWeekStart.add(const Duration(days: 7 * _maxWeeksForward));
-    final nextWeek = _displayWeekStart.add(const Duration(days: 7));
+    final nextWeek = _effectiveWeekStart.add(const Duration(days: 7));
     return nextWeek.isBefore(maxForward) ||
         nextWeek.isAtSameMomentAs(maxForward);
   }
 
   String _weekRangeLabel() {
-    final end = _displayWeekStart.add(const Duration(days: 6));
+    final start = _effectiveWeekStart;
+    final end = start.add(const Duration(days: 6));
     const months = [
       '', 'янв', 'фев', 'мар', 'апр', 'май', 'июн',
       'июл', 'авг', 'сен', 'окт', 'ноя', 'дек',
     ];
-    return '${_displayWeekStart.day} ${months[_displayWeekStart.month]} — ${end.day} ${months[end.month]}';
+    return '${start.day} ${months[start.month]} — ${end.day} ${months[end.month]}';
   }
 
   String _fmtDate(DateTime d) =>
@@ -55,39 +56,50 @@ class _WeekCalendarSmartState extends ConsumerState<WeekCalendarSmart> {
       loading: () => const WeekCalendar.loading(),
       error: (_, __) => const WeekCalendar.loading(),
       data: (homeData) {
-        final today = DateTime.now();
-        final todayStr = _fmtDate(today);
+        if (homeData.weekStart != null && _displayWeekStart == null) {
+          _displayWeekStart = _parseDate(homeData.weekStart!);
+        }
 
         return WeekCalendar(
           sessions: homeData.weekSessions,
           weekRangeLabel: _weekRangeLabel(),
-          todayStr: todayStr,
+          weekStart: _fmtDate(_effectiveWeekStart),
           canGoBack: _canGoBack,
           canGoForward: _canGoForward,
+          onSessionTap: (s) => context.push('/workout-session/${s.id}'),
           onBack: _canGoBack
               ? () {
                   setState(() {
                     _displayWeekStart =
-                        _displayWeekStart.subtract(const Duration(days: 7));
+                        _effectiveWeekStart.subtract(const Duration(days: 7));
                   });
                   ref
                       .read(homeProvider.notifier)
-                      .refresh(weekStart: _fmtDate(_displayWeekStart));
+                      .refresh(weekStart: _fmtDate(_effectiveWeekStart));
                 }
               : null,
           onForward: _canGoForward
               ? () {
                   setState(() {
                     _displayWeekStart =
-                        _displayWeekStart.add(const Duration(days: 7));
+                        _effectiveWeekStart.add(const Duration(days: 7));
                   });
                   ref
                       .read(homeProvider.notifier)
-                      .refresh(weekStart: _fmtDate(_displayWeekStart));
+                      .refresh(weekStart: _fmtDate(_effectiveWeekStart));
                 }
               : null,
         );
       },
+    );
+  }
+
+  DateTime _parseDate(String s) {
+    final parts = s.split('-');
+    return DateTime(
+      int.parse(parts[0]),
+      int.parse(parts[1]),
+      int.parse(parts[2]),
     );
   }
 }

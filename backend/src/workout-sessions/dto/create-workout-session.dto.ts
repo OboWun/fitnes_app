@@ -72,7 +72,7 @@ export class CreateWorkoutSessionDto {
   @ApiProperty()
   @IsNotEmpty()
   @IsString()
-  blockId!: string;
+  planSessionId!: string;
 
   @ApiProperty({
     example: 'monday',

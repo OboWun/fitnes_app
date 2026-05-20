@@ -19,16 +19,35 @@ import {
 
 const BAR_WEIGHT = 20;
 
-const DEFAULT_WEIGHTS_BY_EXPERIENCE: Record<string, number> = {
-  beginner: BAR_WEIGHT,
-  intermediate: 40,
-  advanced: 60,
+const EXPERIENCE_MULTIPLIER: Record<string, number> = {
+  beginner: 0.6,
+  intermediate: 1.0,
+  advanced: 1.4,
 };
+
+const DEFAULT_WEIGHT_BY_PATTERN: Record<string, number> = {
+  squat: 40,
+  hinge: 40,
+  press: 30,
+  row: 30,
+  pull: 30,
+  lunge: 20,
+  curl: 15,
+  extension: 15,
+  adduction: 15,
+  abduction: 15,
+  flexion: 0,
+  carry: 16,
+  cardio: 0,
+  locomotion: 0,
+};
+
+const FALLBACK_DEFAULT_WEIGHT = 20;
 
 const PROGRESSION_UPPER = 2.5;
 const PROGRESSION_LOWER = 5;
 
-const WARMUP_THRESHOLD_KG = 40;
+const WARMUP_THRESHOLD_KG = 30;
 
 interface ExerciseMeta {
   movementPattern?: string;
@@ -57,12 +76,15 @@ export class SetPlannerService {
     const experienceLevel =
       (user?.metadata as Record<string, unknown>)?.experienceLevel as string ??
       'intermediate';
+    const userBmi = user?.weight && user?.height && user.height > 0
+      ? user.weight / ((user.height / 100) ** 2)
+      : null;
 
     const allSets: WorkoutSessionSet[] = [];
 
     for (const ex of session.exercises) {
       const exMeta = await this.loadExerciseMeta(ex.exerciseSlug);
-      const measurementType = getMeasurementType(exMeta.movementPattern);
+      const measurementType = getMeasurementType(exMeta.movementPattern, exMeta.exerciseType);
       const compound = isCompoundExercise(exMeta.movementPattern);
       const isBodyweight = this.isBodyweightExercise(exMeta.equipments);
       const repsPerSet = this.getRepsPerSet(session);
@@ -71,38 +93,44 @@ export class SetPlannerService {
         allSets.push(
           ...this.planCardioSets(session.id, ex.exerciseSlug, experienceLevel),
         );
+      } else if (isBodyweight) {
+        allSets.push(
+          ...this.planBodyweightSets(
+            session.id,
+            ex.exerciseSlug,
+            ex.sets,
+            repsPerSet,
+            bodyweightKg,
+          ),
+        );
       } else {
         const workingWeight = await this.predictWorkingWeight(
           session.userId,
           ex.exerciseSlug,
           experienceLevel,
           bodyweightKg,
-          isBodyweight,
           session,
+          userBmi,
+          exMeta,
         );
 
-        if (compound && workingWeight > WARMUP_THRESHOLD_KG) {
-          allSets.push(
-            ...this.planWarmupSets(
-              session.id,
-              ex.exerciseSlug,
-              workingWeight,
-              repsPerSet,
-            ),
-          );
-        }
+        const warmupSets = compound && workingWeight > WARMUP_THRESHOLD_KG
+          ? this.planWarmupSets(session.id, ex.exerciseSlug, workingWeight)
+          : [];
 
-        const startSet = compound && workingWeight > WARMUP_THRESHOLD_KG ? 1 : 1;
+        const workingSets: WorkoutSessionSet[] = [];
         for (let i = 0; i < ex.sets; i++) {
-          allSets.push({
+          workingSets.push({
             sessionId: session.id,
             exerciseSlug: ex.exerciseSlug,
-            setNumber: startSet + i,
+            setNumber: warmupSets.length + i + 1,
             setType: 'working',
-            plannedWeightKg: isBodyweight ? bodyweightKg : workingWeight,
+            plannedWeightKg: workingWeight,
             plannedReps: repsPerSet,
           });
         }
+
+        allSets.push(...warmupSets, ...workingSets);
       }
     }
 
@@ -119,8 +147,9 @@ export class SetPlannerService {
     exerciseSlug: string,
     experienceLevel: string,
     bodyweightKg: number,
-    isBodyweight: boolean,
     session: WorkoutSession,
+    bmi?: number | null,
+    exMeta?: ExerciseMeta,
   ): Promise<number> {
     const history = await this.sessionsRepo.findExerciseHistory(
       userId,
@@ -129,12 +158,12 @@ export class SetPlannerService {
     );
 
     if (!history.length) {
-      return this.getDefaultWeight(experienceLevel, isBodyweight, bodyweightKg);
+      return this.getDefaultWeight(experienceLevel, bodyweightKg, bmi, exMeta);
     }
 
     const bestSet = this.findBestSet(history);
     if (!bestSet) {
-      return this.getDefaultWeight(experienceLevel, isBodyweight, bodyweightKg);
+      return this.getDefaultWeight(experienceLevel, bodyweightKg, bmi, exMeta);
     }
 
     let workingWeight = bestSet.actualWeightKg ?? bestSet.plannedWeightKg ?? BAR_WEIGHT;
@@ -175,15 +204,13 @@ export class SetPlannerService {
     sessionId: string,
     exerciseSlug: string,
     workingWeight: number,
-    _targetReps: number,
   ): WorkoutSessionSet[] {
     const sets: WorkoutSessionSet[] = [];
-    let num = 0;
 
     sets.push({
       sessionId,
       exerciseSlug,
-      setNumber: ++num,
+      setNumber: 1,
       setType: 'warmup',
       plannedWeightKg: BAR_WEIGHT,
       plannedReps: 15,
@@ -193,7 +220,7 @@ export class SetPlannerService {
       sets.push({
         sessionId,
         exerciseSlug,
-        setNumber: ++num,
+        setNumber: 2,
         setType: 'warmup',
         plannedWeightKg: Math.round(workingWeight * 0.5),
         plannedReps: 10,
@@ -202,7 +229,7 @@ export class SetPlannerService {
       sets.push({
         sessionId,
         exerciseSlug,
-        setNumber: ++num,
+        setNumber: 3,
         setType: 'warmup',
         plannedWeightKg: Math.round(workingWeight * 0.75),
         plannedReps: 8,
@@ -212,19 +239,50 @@ export class SetPlannerService {
     return sets;
   }
 
+  private planBodyweightSets(
+    sessionId: string,
+    exerciseSlug: string,
+    totalSets: number,
+    repsPerSet: number,
+    bodyweightKg: number,
+  ): WorkoutSessionSet[] {
+    const sets: WorkoutSessionSet[] = [];
+    for (let i = 0; i < totalSets; i++) {
+      sets.push({
+        sessionId,
+        exerciseSlug,
+        setNumber: i + 1,
+        setType: 'working',
+        plannedWeightKg: bodyweightKg,
+        plannedReps: repsPerSet,
+      });
+    }
+    return sets;
+  }
+
   private planCardioSets(
     sessionId: string,
     exerciseSlug: string,
-    _experienceLevel: string,
+    experienceLevel: string,
   ): WorkoutSessionSet[] {
+    const durationByLevel: Record<string, number> = {
+      beginner: 15 * 60,
+      intermediate: 20 * 60,
+      advanced: 30 * 60,
+    };
+    const distanceByLevel: Record<string, number> = {
+      beginner: 2000,
+      intermediate: 3000,
+      advanced: 5000,
+    };
     return [
       {
         sessionId,
         exerciseSlug,
         setNumber: 1,
         setType: 'working',
-        plannedDurationSec: 20 * 60,
-        plannedDistanceM: 3000,
+        plannedDurationSec: durationByLevel[experienceLevel] ?? 20 * 60,
+        plannedDistanceM: distanceByLevel[experienceLevel] ?? 3000,
       },
     ];
   }
@@ -249,11 +307,22 @@ export class SetPlannerService {
 
   private getDefaultWeight(
     experienceLevel: string,
-    isBodyweight: boolean,
     bodyweightKg: number,
+    bmi?: number | null,
+    exMeta?: ExerciseMeta,
   ): number {
-    if (isBodyweight) return bodyweightKg;
-    return DEFAULT_WEIGHTS_BY_EXPERIENCE[experienceLevel] ?? 40;
+    const pattern = exMeta?.movementPattern ?? '';
+    let base = DEFAULT_WEIGHT_BY_PATTERN[pattern] ?? FALLBACK_DEFAULT_WEIGHT;
+
+    if (base === 0) return bodyweightKg;
+
+    const multiplier = EXPERIENCE_MULTIPLIER[experienceLevel] ?? 1.0;
+    base = Math.round(base * multiplier);
+
+    if (bmi && bmi > 30) base = Math.round(base * 1.15);
+    if (bmi && bmi < 18.5) base = Math.round(base * 0.85);
+
+    return base;
   }
 
   private getRepsPerSet(session: WorkoutSession): number {
@@ -271,6 +340,8 @@ export class SetPlannerService {
       'hamstring',
       'thigh',
       'hip',
+      'adduction',
+      'abduction',
     ];
     return lowerKeywords.some((k) => exerciseSlug.includes(k));
   }
@@ -282,7 +353,8 @@ export class SetPlannerService {
         e === 'body weight' ||
         e === 'bodyweight' ||
         e === 'body-weight' ||
-        e === 'no equipment',
+        e === 'no equipment' ||
+        e === 'собственный вес',
     );
   }
 

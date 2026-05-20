@@ -37,9 +37,12 @@
 | `recoveryCapacity(u)` | `User.metadata.recoveryCapacity` | 0..1, дефолт 0.5 |
 | `goal(u)` | `User.metadata.goal` | цель, дефолт general_fitness |
 | `sessionDurationMin` | входной параметр запроса | лимит времени, 20..120 |
-| `goal` | входной параметр запроса | цель: strength, hypertrophy, endurance и т.д. |
+| `goal` | входной параметр запроса | цель: strength, hypertrophy, endurance, weight_loss, general_health, rehab, mobility, glute_growth, recomposition |
 | `experienceLevel` | входной параметр запроса | beginner, intermediate, advanced |
 | `gender` | `User.gender` | male, female — влияет на веса выбора упражнений |
+| `age` | `User.age` | влияет на AGE_VOLUME_SCALE и AGE_REST_MODIFIER |
+| `heightCm` | `User.height` | используется для BMI |
+| `weightKg` | `User.weight` | используется для BMI и bodyweight упражнений |
 | `compoundSets` | auto-derived из level + goal | подходы для compound-упражнений (3-5) |
 | `isolationSets` | auto-derived из level + goal | подходы для isolation-упражнений (2-3) |
 | `repsPerSet` | auto-derived из goal | повторения: strength=5, hypertrophy=10, endurance=15 |

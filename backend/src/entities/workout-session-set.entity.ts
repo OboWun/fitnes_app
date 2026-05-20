@@ -26,12 +26,13 @@ export const COMPOUND_PATTERNS = new Set([
   'squat', 'press', 'pull', 'hinge', 'row', 'lunge',
 ]);
 
-export const CARDIO_PATTERNS = new Set(['locomotion']);
+export const CARDIO_PATTERNS = new Set(['locomotion', 'cardio']);
 
 export function getMeasurementType(
   movementPattern?: string,
+  exerciseType?: string,
 ): MeasurementType {
-  if (movementPattern && CARDIO_PATTERNS.has(movementPattern))
+  if ((movementPattern && CARDIO_PATTERNS.has(movementPattern)) || exerciseType === 'cardio')
     return 'duration_distance';
   return 'weight_reps';
 }

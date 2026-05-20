@@ -13,7 +13,7 @@ interface WorkoutMILPInput {
   userId: string;
   sessionDurationMin: number;       // 20..120, обязательный
   experienceLevel?: string;         // beginner | intermediate | advanced
-  goal?: string;                    // strength | hypertrophy | endurance | weight_loss | general_health | rehab | mobility
+  goal?: string;                    // strength | hypertrophy | endurance | weight_loss | general_health | rehab | mobility | glute_growth | recomposition
   focusMuscles?: string[];          // мышечные группы для акцента
   specificMuscles?: string[];       // конкретные мышцы для приоритета
   exerciseCount?: number;           // 3..8, auto-derived если не указан
@@ -29,6 +29,13 @@ interface WorkoutMILPInput {
   userContraindications?: string[];
   gender?: string;                  // male | female
   weeklyVolumeByMuscle?: Record<string, number>;
+  activityLevel?: string;           // sedentary | light | moderate | active
+  cardioPreference?: string;        // running | cycling | rowing | jump_rope | swimming | any
+  primaryLifts?: string[];          // squat | bench | deadlift | ohp
+  enduranceType?: string;           // muscular | cardio | mixed
+  age?: number;
+  heightCm?: number;
+  weightKg?: number;
 }
 ```
 
@@ -70,6 +77,15 @@ interface WeeklyProcessInput {
   availableEquipment: string[];
   phase?: string;
   userContraindications?: string[];
+  splitType?: string;               // auto | full_body | upper_lower | ppl
+  activityLevel?: string;           // sedentary | light | moderate | active
+  cardioPreference?: string;        // running | cycling | rowing | jump_rope | swimming | any
+  primaryLifts?: string[];          // squat | bench | deadlift | ohp
+  enduranceType?: string;           // muscular | cardio | mixed
+  targetWeightKg?: number;          // для weight_loss
+  age?: number;
+  heightCm?: number;
+  weightKg?: number;
 }
 ```
 
@@ -77,7 +93,7 @@ interface WeeklyProcessInput {
 
 ```ts
 interface WeeklyProcessOutput {
-  blockId: string;
+  planId: string;
   splitName: string;                // ppl, upper_lower, full_body и т.д.
   sessions: {
     dayOfWeek: DayOfWeek;
@@ -107,10 +123,12 @@ interface WeeklyProcessOutput {
 8. Не выходить за лимит времени.
 9. Не превышать усталость по мышцам (FATIGUE_LIMIT = 3.0).
 10. Недельный объём отслеживается: мышцы ≥ max → deprioritized (×0.3), < min×0.5 → boosted (×1.3).
-11. Gender-aware: female → glutes/hamstrings ×1.3, male → chest/shoulders/lats ×1.2.
+11. Gender-aware: female → glutes/hamstrings ×1.3 (×1.7 for glute_growth), male → chest/shoulders/lats ×1.2.
 12. Session-type-aware scoring: different SESSION_TARGETS и SESSION_DEPRIORITIZE per slot.
 13. Variable sets: compound (multi-muscle) → больше подходов, isolation → меньше.
-14. Goal → reps: strength 1-5, hypertrophy 6-12, endurance 15-25.
+14. Goal → reps: strength 1-5, hypertrophy 6-12, endurance 15-25, glute_growth 6-20, recomposition 8-15.
+15. Age-aware: AGE_VOLUME_SCALE (<25:1.1, 25-40:1.0, 40-55:0.85, >55:0.7), AGE_REST_MODIFIER (>40:1.1, >55:1.2).
+16. BMI-aware: BMI>30 → bodyweight ×0.7 scoring; BMI<18.5 → high-impact ×0.8.
 
 ## 3. Metadata-слой
 
@@ -245,5 +263,5 @@ load(e, m) = fatigueCost(e) × primaryMuscleWeight(e, m)
 | `5-advanced` | ppl_pp | Push, Pull, Legs, Push, Pull |
 | `6-*` | ppl_ppl | Push, Pull, Legs, Push, Pull, Legs |
 
-Goal modifiers: `rehab`/`mobility` → все FB; `weight_loss`/`endurance` → до половины сессий FB.
+Goal modifiers: `rehab`/`mobility` → все FB; `weight_loss`/`endurance` → до половины сессий FB; `glute_growth` → female ×1.7 / male ×1.5 mandatory muscles.
 Experience caps: beginner ≤ 3-4 days, intermediate ≤ 5, advanced ≤ 6.

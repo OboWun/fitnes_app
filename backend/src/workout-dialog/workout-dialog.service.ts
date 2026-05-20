@@ -24,7 +24,14 @@ type StepId =
   | 'equipment'
   | 'frequency'
   | 'days'
-  | 'duration';
+  | 'duration'
+  | 'advanced_settings'
+  | 'split'
+  | 'activity_level'
+  | 'cardio_preference'
+  | 'primary_lifts'
+  | 'endurance_type'
+  | 'target_weight';
 
 const STEP_ORDER: StepId[] = [
   'plan_type',
@@ -36,12 +43,19 @@ const STEP_ORDER: StepId[] = [
   'frequency',
   'days',
   'duration',
+  'advanced_settings',
+  'split',
+  'activity_level',
+  'cardio_preference',
+  'primary_lifts',
+  'endurance_type',
+  'target_weight',
 ];
 
 interface StepDefinition {
   question: string;
   description?: string;
-  inputType: 'single_choice' | 'multi_choice';
+  inputType: 'single_choice' | 'multi_choice' | 'number';
   canSkip: boolean;
   getOptions: (ctx: StepContext) => { value: string; label: string }[];
 }
@@ -56,6 +70,8 @@ interface StepContext {
 const GOAL_OPTIONS = [
   { value: 'strength', label: 'Сила' },
   { value: 'hypertrophy', label: 'Рост мышц (гипертрофия)' },
+  { value: 'glute_growth', label: 'Накачать ягодицы' },
+  { value: 'recomposition', label: 'Рельеф / подтянутое тело' },
   { value: 'endurance', label: 'Выносливость' },
   { value: 'weight_loss', label: 'Похудение' },
   { value: 'general_health', label: 'Общее здоровье' },
@@ -80,6 +96,7 @@ const FOCUS_MUSCLE_OPTIONS = [
 ];
 
 const FREQUENCY_OPTIONS = [
+  { value: 'auto', label: 'Автоматически (рекомендуется)' },
   { value: '2', label: '2 раза в неделю' },
   { value: '3', label: '3 раза в неделю' },
   { value: '4', label: '4 раза в неделю' },
@@ -98,6 +115,7 @@ const DAYS_OPTIONS = [
 ];
 
 const DURATION_OPTIONS = [
+  { value: 'auto', label: 'Автоматически (рекомендуется)' },
   { value: '20', label: '20 минут' },
   { value: '30', label: '30 минут' },
   { value: '45', label: '45 минут' },
@@ -105,6 +123,42 @@ const DURATION_OPTIONS = [
   { value: '75', label: '75 минут' },
   { value: '90', label: '90 минут' },
   { value: '120', label: '120 минут' },
+];
+
+const SPLIT_OPTIONS = [
+  { value: 'auto', label: 'Автоматически (рекомендуется)' },
+  { value: 'full_body', label: 'Фулбоди (всё тело)' },
+  { value: 'upper_lower', label: 'Верх/Низ' },
+  { value: 'ppl', label: 'Тяни/Толкай/Ноги (PPL)' },
+];
+
+const ACTIVITY_LEVEL_OPTIONS = [
+  { value: 'sedentary', label: 'Сидячий (офис, минимум движения)' },
+  { value: 'light', label: 'Лёгкий (прогулки, 1-2 тренировки)' },
+  { value: 'moderate', label: 'Умеренный (регулярные тренировки)' },
+  { value: 'active', label: 'Активный (ежедневные нагрузки)' },
+];
+
+const CARDIO_PREFERENCE_OPTIONS = [
+  { value: 'any', label: 'Любое (без предпочтений)' },
+  { value: 'running', label: 'Бег' },
+  { value: 'cycling', label: 'Велосипед' },
+  { value: 'rowing', label: 'Гребля' },
+  { value: 'jump_rope', label: 'Скакалка' },
+  { value: 'swimming', label: 'Плавание' },
+];
+
+const PRIMARY_LIFTS_OPTIONS = [
+  { value: 'squat', label: 'Приседания' },
+  { value: 'bench', label: 'Жим лёжа' },
+  { value: 'deadlift', label: 'Становая тяга' },
+  { value: 'ohp', label: 'Жим стоя (OHP)' },
+];
+
+const ENDURANCE_TYPE_OPTIONS = [
+  { value: 'muscular', label: 'Мышечная выносливость (больше повторений)' },
+  { value: 'cardio', label: 'Кардио (больше аэробных)' },
+  { value: 'mixed', label: 'Смешанная' },
 ];
 
 const STEP_DEFINITIONS: Record<StepId, StepDefinition> = {
@@ -187,6 +241,7 @@ const STEP_DEFINITIONS: Record<StepId, StepDefinition> = {
   },
   frequency: {
     question: 'Сколько тренировок в неделю вы планируете?',
+    description: 'Выберите «Автоматически» — и мы подберём оптимальное количество',
     inputType: 'single_choice',
     canSkip: false,
     getOptions: () => FREQUENCY_OPTIONS,
@@ -200,9 +255,60 @@ const STEP_DEFINITIONS: Record<StepId, StepDefinition> = {
   },
   duration: {
     question: 'Сколько минут длится ваша тренировка?',
+    description: 'Выберите «Автоматически» — и мы подберём оптимальное время',
     inputType: 'single_choice',
     canSkip: false,
     getOptions: () => DURATION_OPTIONS,
+  },
+  advanced_settings: {
+    question: 'Хотите настроить тренировки подробнее?',
+    description: 'Рекомендуемые настройки подходят большинству. Выберите «Настроить» для точной настройки.',
+    inputType: 'single_choice',
+    canSkip: true,
+    getOptions: () => [
+      { value: 'recommended', label: 'Рекомендуемые настройки' },
+      { value: 'manual', label: 'Настроить вручную' },
+    ],
+  },
+  split: {
+    question: 'Какой тип сплита предпочитаете?',
+    description: 'Распределение мышечных групп по дням',
+    inputType: 'single_choice',
+    canSkip: true,
+    getOptions: () => SPLIT_OPTIONS,
+  },
+  activity_level: {
+    question: 'Какой у вас уровень повседневной активности?',
+    description: 'Влияет на общий объём нагрузки',
+    inputType: 'single_choice',
+    canSkip: true,
+    getOptions: () => ACTIVITY_LEVEL_OPTIONS,
+  },
+  cardio_preference: {
+    question: 'Какой вид кардио предпочитаете?',
+    inputType: 'single_choice',
+    canSkip: true,
+    getOptions: () => CARDIO_PREFERENCE_OPTIONS,
+  },
+  primary_lifts: {
+    question: 'Вокруг каких базовых движений строить программу?',
+    description: 'Можно выбрать несколько. Эти упражнения будут приоритетными.',
+    inputType: 'multi_choice',
+    canSkip: true,
+    getOptions: () => PRIMARY_LIFTS_OPTIONS,
+  },
+  endurance_type: {
+    question: 'Какой тип выносливости развиваем?',
+    inputType: 'single_choice',
+    canSkip: true,
+    getOptions: () => ENDURANCE_TYPE_OPTIONS,
+  },
+  target_weight: {
+    question: 'Какой ваш целевой вес (кг)?',
+    description: 'Используется для отслеживания прогресса',
+    inputType: 'number',
+    canSkip: true,
+    getOptions: () => [],
   },
 };
 
@@ -296,6 +402,25 @@ export class WorkoutDialogService {
     }
 
     const currentStep = dialog.currentStep as StepId;
+
+    const validationCtx = await this.buildContext(dialog);
+    const stepDef = STEP_DEFINITIONS[currentStep];
+    if (stepDef.inputType === 'single_choice') {
+      const validOptions = stepDef.getOptions(validationCtx).map((o) => o.value);
+      if (!validOptions.includes(answer)) {
+        return {
+          completed: false,
+          dialog,
+          step: currentStep,
+          question: stepDef.question,
+          description: stepDef.description,
+          inputType: stepDef.inputType,
+          options: stepDef.getOptions(validationCtx),
+          canSkip: stepDef.canSkip,
+        };
+      }
+    }
+
     this.applyAnswer(dialog.collectedParams, currentStep, answer);
 
     if (
@@ -407,16 +532,56 @@ export class WorkoutDialogService {
     const effectivePlan =
       planType ?? (collected.planType as string | undefined);
 
+    const isWeekly = effectivePlan === 'weekly';
+    const isGenerate = effectivePlan === 'generate';
+    const goal = collected.goal as string | undefined;
+    const isManual =
+      collected.advancedSettings === 'manual';
+
+    const goalHasWeightLoss = goal === 'weight_loss';
+    const goalHasStrength = goal === 'strength' || goal === 'glute_growth';
+    const goalHasEndurance = goal === 'endurance';
+
     for (const step of STEP_ORDER) {
       if (step === 'plan_type') {
         if (collected.planType) continue;
         return step;
       }
 
-      if (step === 'focus_muscles' && effectivePlan === 'weekly') continue;
-      if (step === 'frequency' && effectivePlan !== 'weekly') continue;
-      if (step === 'days' && effectivePlan !== 'weekly') continue;
+      if (step === 'focus_muscles' && isWeekly) continue;
+      if (step === 'frequency' && !isWeekly) continue;
+      if (step === 'days' && !isWeekly) continue;
+      if (step === 'split' && !isWeekly) continue;
 
+      // Advanced settings gate
+      if (step === 'advanced_settings') {
+        if (collected.advancedSettings !== undefined) continue;
+        return step;
+      }
+
+      // Steps after advanced_settings gate — only if manual
+      if (
+        step === 'split' ||
+        step === 'activity_level' ||
+        step === 'cardio_preference' ||
+        step === 'primary_lifts' ||
+        step === 'endurance_type' ||
+        step === 'target_weight'
+      ) {
+        if (!isManual) continue;
+      }
+
+      // Goal-specific filtering
+      if (step === 'split' && !isWeekly) continue;
+      if (step === 'cardio_preference' && !goalHasWeightLoss && !goalHasEndurance) continue;
+      if (step === 'primary_lifts' && !goalHasStrength) continue;
+      if (step === 'endurance_type' && !goalHasEndurance) continue;
+      if (step === 'target_weight' && !goalHasWeightLoss) continue;
+
+      // Auto-skip days when frequency is auto
+      if (step === 'days' && collected.trainingCountPerWeek === null) continue;
+
+      // Skip already-answered steps
       if (step === 'goal' && collected.goal) continue;
       if (step === 'experience' && collected.experienceLevel) continue;
       if (step === 'focus_muscles' && collected.focusMuscles) continue;
@@ -429,9 +594,15 @@ export class WorkoutDialogService {
       if (step === 'equipment_preset' && collected.equipmentPresetManual)
         continue;
       if (step === 'equipment' && collected.availableEquipment) continue;
-      if (step === 'frequency' && collected.trainingCountPerWeek) continue;
+      if (step === 'frequency' && collected.trainingCountPerWeek !== undefined) continue;
       if (step === 'days' && collected.availableDays) continue;
-      if (step === 'duration' && collected.sessionDurationMin) continue;
+      if (step === 'duration' && collected.sessionDurationMin !== undefined) continue;
+      if (step === 'split' && collected.splitType) continue;
+      if (step === 'activity_level' && collected.activityLevel) continue;
+      if (step === 'cardio_preference' && collected.cardioPreference) continue;
+      if (step === 'primary_lifts' && collected.primaryLifts) continue;
+      if (step === 'endurance_type' && collected.enduranceType) continue;
+      if (step === 'target_weight' && collected.targetWeightKg) continue;
 
       return step;
     }
@@ -499,7 +670,11 @@ export class WorkoutDialogService {
         break;
       }
       case 'frequency':
-        collected.trainingCountPerWeek = parseInt(answer, 10);
+        if (answer === 'auto') {
+          collected.trainingCountPerWeek = null;
+        } else {
+          collected.trainingCountPerWeek = parseInt(answer, 10);
+        }
         break;
       case 'days': {
         const existing = (collected.availableDays as string[]) ?? [];
@@ -515,7 +690,42 @@ export class WorkoutDialogService {
         break;
       }
       case 'duration':
-        collected.sessionDurationMin = parseInt(answer, 10);
+        if (answer === 'auto') {
+          collected.sessionDurationMin = null;
+        } else {
+          collected.sessionDurationMin = parseInt(answer, 10);
+        }
+        break;
+      case 'advanced_settings':
+        collected.advancedSettings = answer;
+        break;
+      case 'split':
+        collected.splitType = answer;
+        break;
+      case 'activity_level':
+        collected.activityLevel = answer;
+        break;
+      case 'cardio_preference':
+        collected.cardioPreference = answer;
+        break;
+      case 'primary_lifts': {
+        const existing = (collected.primaryLifts as string[]) ?? [];
+        const set = new Set(existing);
+        for (const v of answer.split(',')) {
+          if (set.has(v)) {
+            set.delete(v);
+          } else {
+            set.add(v);
+          }
+        }
+        collected.primaryLifts = [...set];
+        break;
+      }
+      case 'endurance_type':
+        collected.enduranceType = answer;
+        break;
+      case 'target_weight':
+        collected.targetWeightKg = parseFloat(answer);
         break;
     }
   }
@@ -526,23 +736,30 @@ export class WorkoutDialogService {
   ): Record<string, unknown> {
     const effective = planType ?? (collected.planType as string);
 
+    const base: Record<string, unknown> = {
+      experienceLevel: collected.experienceLevel ?? 'intermediate',
+      goal: collected.goal ?? 'general_health',
+      availableEquipment: collected.availableEquipment ?? [],
+      sessionDurationMin: collected.sessionDurationMin ?? null,
+      activityLevel: collected.activityLevel ?? undefined,
+      cardioPreference: collected.cardioPreference ?? undefined,
+      primaryLifts: collected.primaryLifts ?? undefined,
+      enduranceType: collected.enduranceType ?? undefined,
+      targetWeightKg: collected.targetWeightKg ?? undefined,
+    };
+
     if (effective === 'weekly') {
       return {
+        ...base,
         availableDays: collected.availableDays ?? [],
-        trainingCountPerWeek: collected.trainingCountPerWeek ?? 3,
-        sessionDurationMin: collected.sessionDurationMin ?? 60,
-        experienceLevel: collected.experienceLevel ?? 'intermediate',
-        goal: collected.goal ?? 'general_health',
-        availableEquipment: collected.availableEquipment ?? [],
+        trainingCountPerWeek: collected.trainingCountPerWeek ?? null,
+        splitType: collected.splitType ?? 'auto',
       };
     }
 
     return {
-      sessionDurationMin: collected.sessionDurationMin ?? 60,
-      experienceLevel: collected.experienceLevel ?? 'intermediate',
-      goal: collected.goal ?? 'general_health',
+      ...base,
       focusMuscles: collected.focusMuscles ?? [],
-      availableEquipment: collected.availableEquipment ?? [],
     };
   }
 

@@ -12,9 +12,10 @@ import {
 } from '../common/repositories/index.js';
 import { ExercisesSqlRepository } from '../exercises/exercises-sql.repository.js';
 import { UsersSqlRepository } from '../users/users-sql.repository.js';
+import { TrainingPlansModule } from '../training-plans/training-plans.module.js';
 
 @Module({
-  imports: [ScheduleModule.forRoot()],
+  imports: [ScheduleModule.forRoot(), TrainingPlansModule],
   controllers: [WorkoutSessionsController],
   providers: [
     WorkoutSessionsService,

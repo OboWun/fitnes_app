@@ -17,12 +17,23 @@ import 'widgets/exercise_filter_bar.dart';
 import 'widgets/exercise_filter_sheet.dart';
 import 'widgets/exercise_list_item.dart';
 
+part '_picker_bottom_bar.dart';
+
 class ExercisesPage extends ConsumerStatefulWidget {
   final String? equipment;
   final String? search;
   final String? muscles;
+  final bool isPickerMode;
+  final Set<String> initialSelection;
 
-  const ExercisesPage({super.key, this.equipment, this.search, this.muscles});
+  const ExercisesPage({
+    super.key,
+    this.equipment,
+    this.search,
+    this.muscles,
+    this.isPickerMode = false,
+    this.initialSelection = const {},
+  });
 
   @override
   ConsumerState<ExercisesPage> createState() => _ExercisesPageState();
@@ -34,10 +45,12 @@ class _ExercisesPageState extends ConsumerState<ExercisesPage> {
   final _searchQuery = ValueNotifier<String>('');
   bool _showSearch = false;
   ExerciseFilter _filter = const ExerciseFilter();
+  late Set<String> _selected;
 
   @override
   void initState() {
     super.initState();
+    _selected = Set.from(widget.initialSelection);
     _filter = ExerciseFilter(
       isPersonal: true,
       equipments: widget.equipment != null
@@ -81,6 +94,16 @@ class _ExercisesPageState extends ConsumerState<ExercisesPage> {
     _pagingController.refresh();
   }
 
+  void _toggleSelect(String slug) {
+    setState(() {
+      if (_selected.contains(slug)) {
+        _selected.remove(slug);
+      } else {
+        _selected.add(slug);
+      }
+    });
+  }
+
   @override
   void dispose() {
     _pagingController.dispose();
@@ -98,29 +121,42 @@ class _ExercisesPageState extends ConsumerState<ExercisesPage> {
     return Scaffold(
       backgroundColor: AppColors.whiteColor,
       appBar: AppBar(
-        title: const Text('Упражнения'),
+        title: Text(widget.isPickerMode
+            ? 'Выберите упражнения'
+            : 'Упражнения'),
         actions: [
-          IconButton(
-            icon: Icon(_showSearch ? Icons.close : Icons.search),
-            onPressed: () {
-              setState(() => _showSearch = !_showSearch);
-              if (!_showSearch) {
-                _searchQuery.value = '';
-                _searchController.clear();
-                _updateFilter(_filter.copyWith(search: null, page: 1));
-              }
-            },
-          ),
+          if (widget.isPickerMode)
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(_selected),
+              child: Text(
+                'Готово',
+                style: AppTypography.mediumTextSemiBold.copyWith(
+                  color: AppColors.blackColor,
+                ),
+              ),
+            )
+          else
+            IconButton(
+              icon: Icon(_showSearch ? Icons.close : Icons.search),
+              onPressed: () {
+                setState(() => _showSearch = !_showSearch);
+                if (!_showSearch) {
+                  _searchQuery.value = '';
+                  _searchController.clear();
+                  _updateFilter(_filter.copyWith(search: null, page: 1));
+                }
+              },
+            ),
         ],
       ),
       body: Column(
         children: [
-          if (_showSearch)
+          if (_showSearch || widget.isPickerMode)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: TextField(
                 controller: _searchController,
-                autofocus: true,
+                autofocus: widget.isPickerMode,
                 decoration: InputDecoration(
                   hintText: 'Поиск упражнений...',
                   prefixIcon:
@@ -146,30 +182,31 @@ class _ExercisesPageState extends ConsumerState<ExercisesPage> {
                     _updateFilter(_filter.copyWith(search: value, page: 1)),
               ),
             ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: ExerciseFilterBar(
-                value: _filter,
-                onChanged: _updateFilter,
-                equipmentNames: {
-                  for (final e
-                      in allEquipmentAsync.valueOrNull ?? [])
-                    e.slug: e.name,
-                },
-                muscleNames: {
-                  for (final m in allMusclesAsync.valueOrNull ?? [])
-                    m.slug: m.name,
-                },
-                onFilterTap: () => _showFilterSheet(
-                  allEquipmentAsync,
-                  allMusclesAsync,
-                  allPresetsAsync,
+          if (!widget.isPickerMode)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: ExerciseFilterBar(
+                  value: _filter,
+                  onChanged: _updateFilter,
+                  equipmentNames: {
+                    for (final e
+                        in allEquipmentAsync.valueOrNull ?? [])
+                      e.slug: e.name,
+                  },
+                  muscleNames: {
+                    for (final m in allMusclesAsync.valueOrNull ?? [])
+                      m.slug: m.name,
+                  },
+                  onFilterTap: () => _showFilterSheet(
+                    allEquipmentAsync,
+                    allMusclesAsync,
+                    allPresetsAsync,
+                  ),
                 ),
               ),
             ),
-          ),
           Expanded(
             child: PagingListener(
               controller: _pagingController,
@@ -178,14 +215,24 @@ class _ExercisesPageState extends ConsumerState<ExercisesPage> {
                 state: state,
                 fetchNextPage: fetchNextPage,
                 addAutomaticKeepAlives: false,
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  0,
+                  16,
+                  widget.isPickerMode ? 80 : 16,
+                ),
                 builderDelegate: PagedChildBuilderDelegate<ExerciseShort>(
                   itemBuilder: (context, item, index) => Padding(
                     padding: const EdgeInsets.only(bottom: 8),
                     child: ExerciseListItem(
                       exercise: item,
-                      onTap: () =>
-                          context.push('/exercises/${item.slug}'),
+                      isPickerMode: widget.isPickerMode,
+                      isSelected: _selected.contains(item.slug),
+                      onToggleSelect: _toggleSelect,
+                      onTap: widget.isPickerMode
+                          ? null
+                          : () =>
+                              context.push('/exercises/${item.slug}'),
                     ),
                   ),
                   firstPageProgressIndicatorBuilder: (context) =>
@@ -194,7 +241,8 @@ class _ExercisesPageState extends ConsumerState<ExercisesPage> {
                       const _NewPageLoading(),
                   noItemsFoundIndicatorBuilder: (context) => Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 48),
+                      padding:
+                          const EdgeInsets.symmetric(vertical: 48),
                       child: Text(
                         'Упражнений не найдено',
                         style: AppTypography.mediumTextRegular
@@ -236,6 +284,11 @@ class _ExercisesPageState extends ConsumerState<ExercisesPage> {
               ),
             ),
           ),
+          if (widget.isPickerMode)
+            _PickerBottomBar(
+              selectedCount: _selected.length,
+              onConfirm: () => Navigator.of(context).pop(_selected),
+            ),
         ],
       ),
     );

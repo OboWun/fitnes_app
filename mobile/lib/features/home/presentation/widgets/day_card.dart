@@ -7,6 +7,8 @@ class DayCard extends StatelessWidget {
   final String? _date;
   final String? _workoutLabel;
   final bool _isToday;
+  final String _status;
+  final VoidCallback? _onTap;
 
   const DayCard({
     super.key,
@@ -14,16 +16,22 @@ class DayCard extends StatelessWidget {
     required String date,
     String? workoutLabel,
     bool isToday = false,
+    String status = 'planned',
+    VoidCallback? onTap,
   })  : _dayName = dayName,
         _date = date,
         _workoutLabel = workoutLabel,
-        _isToday = isToday;
+        _isToday = isToday,
+        _status = status,
+        _onTap = onTap;
 
   const DayCard.loading({super.key, bool isToday = false})
       : _dayName = null,
         _date = null,
         _workoutLabel = null,
-        _isToday = isToday;
+        _isToday = isToday,
+        _status = 'planned',
+        _onTap = null;
 
   @override
   Widget build(BuildContext context) {
@@ -31,10 +39,12 @@ class DayCard extends StatelessWidget {
       return const _DayCardLoading(isToday: false);
     }
     return _DayCardData(
-      dayName: _dayName,
-      date: _date,
+      dayName: _dayName!,
+      date: _date!,
       workoutLabel: _workoutLabel,
       isToday: _isToday,
+      status: _status,
+      onTap: _onTap,
     );
   }
 }
@@ -44,22 +54,63 @@ class _DayCardData extends StatelessWidget {
   final String date;
   final String? workoutLabel;
   final bool isToday;
+  final String status;
+  final VoidCallback? onTap;
 
   const _DayCardData({
     required this.dayName,
     required this.date,
     this.workoutLabel,
     this.isToday = false,
+    this.status = 'planned',
+    this.onTap,
   });
+
+  bool get _isCompleted => status == 'completed';
+  bool get _isSkipped => status == 'skipped' || status == 'replaced';
+  bool get _isPast => _isCompleted || _isSkipped;
+
+  Color get _bgColor {
+    if (isToday) return AppColors.whiteColor;
+    if (_isCompleted) return AppColors.success.withValues(alpha: 0.12);
+    if (_isSkipped) return AppColors.gray3.withValues(alpha: 0.5);
+    return AppColors.borderColor;
+  }
+
+  Color get _dayNameColor {
+    if (isToday) return AppColors.whiteColor;
+    if (_isPast) return AppColors.gray3;
+    return AppColors.gray2;
+  }
+
+  Color get _dateColor {
+    if (isToday) return AppColors.whiteColor;
+    if (_isPast) return AppColors.gray3;
+    return AppColors.blackColor;
+  }
+
+  Color get _labelBg {
+    if (isToday) return AppColors.whiteColor.withValues(alpha: 0.25);
+    if (_isCompleted) return AppColors.success.withValues(alpha: 0.15);
+    if (_isSkipped) return AppColors.gray3.withValues(alpha: 0.3);
+    return AppGradients.blueLinear.colors.first.withValues(alpha: 0.12);
+  }
+
+  Color get _labelColor {
+    if (isToday) return AppColors.whiteColor;
+    if (_isCompleted) return AppColors.success;
+    if (_isSkipped) return AppColors.gray2;
+    return AppGradients.blueLinear.colors.first;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    final child = Container(
       constraints: const BoxConstraints(minWidth: 44),
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
       decoration: BoxDecoration(
         gradient: isToday ? AppGradients.blueLinear : null,
-        color: isToday ? null : AppColors.borderColor,
+        color: isToday ? null : _bgColor,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
@@ -67,35 +118,41 @@ class _DayCardData extends StatelessWidget {
         children: [
           Text(
             dayName,
-            style: AppTypography.captionMedium.copyWith(
-              color: isToday ? AppColors.whiteColor : AppColors.gray2,
-            ),
+            style: AppTypography.captionMedium.copyWith(color: _dayNameColor),
           ),
           const SizedBox(height: 6),
           Text(
             date,
-            style: AppTypography.smallTextSemiBold.copyWith(
-              color: isToday ? AppColors.whiteColor : AppColors.blackColor,
-            ),
+            style: AppTypography.smallTextSemiBold.copyWith(color: _dateColor),
           ),
-          if (workoutLabel != null) ...[
+          if (_isCompleted)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Icon(Icons.check_circle, size: 12, color: AppColors.success),
+            )
+          else if (_isSkipped)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '—',
+                style: AppTypography.captionMedium.copyWith(
+                  color: AppColors.gray3,
+                ),
+              ),
+            )
+          else if (workoutLabel != null) ...[
             const SizedBox(height: 4),
             Container(
               padding:
                   const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
               decoration: BoxDecoration(
-                color: isToday
-                    ? AppColors.whiteColor.withValues(alpha: 0.25)
-                    : AppGradients.blueLinear.colors.first
-                        .withValues(alpha: 0.12),
+                color: _labelBg,
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(
                 workoutLabel!,
                 style: AppTypography.captionRegular.copyWith(
-                  color: isToday
-                      ? AppColors.whiteColor
-                      : AppGradients.blueLinear.colors.first,
+                  color: _labelColor,
                   fontSize: 8,
                 ),
                 textAlign: TextAlign.center,
@@ -106,6 +163,13 @@ class _DayCardData extends StatelessWidget {
           ],
         ],
       ),
+    );
+
+    if (onTap == null) return child;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: child,
     );
   }
 }

@@ -13,10 +13,11 @@ import type {
 
 interface WorkoutSessionRow {
   id: string;
-  block_id: string;
+  plan_session_id: string;
   user_id: string;
   day_of_week: string;
   time: string | null;
+  week_number: number | null;
   status: string | null;
   metadata: WorkoutSessionMetadata | null;
 }
@@ -70,10 +71,11 @@ function toSession(
 ): WorkoutSession {
   return {
     id: row.id,
-    blockId: row.block_id,
+    planSessionId: row.plan_session_id,
     userId: row.user_id,
     dayOfWeek: row.day_of_week as WorkoutSession['dayOfWeek'],
     time: row.time ?? undefined,
+    weekNumber: row.week_number ?? undefined,
     status: (row.status as WorkoutSession['status']) ?? undefined,
     exercises,
     metadata: row.metadata || undefined,
@@ -84,10 +86,10 @@ function toSession(
 export class WorkoutSessionsSqlRepository implements IWorkoutSessionsRepository {
   constructor(private readonly db: DatabaseService) {}
 
-  async findByBlockId(blockId: string): Promise<WorkoutSession[]> {
+  async findByPlanSessionId(planSessionId: string): Promise<WorkoutSession[]> {
     const rows = await this.db.query<WorkoutSessionRow>(
-      'SELECT id, block_id, user_id, day_of_week, time, status, metadata FROM workout_sessions WHERE block_id = $1 ORDER BY day_of_week',
-      [blockId],
+      'SELECT id, plan_session_id, user_id, day_of_week, time, week_number, status, metadata FROM workout_sessions WHERE plan_session_id = $1 ORDER BY day_of_week',
+      [planSessionId],
     );
     return Promise.all(rows.map((r) => this.toSessionWithExercises(r)));
   }
@@ -113,14 +115,14 @@ export class WorkoutSessionsSqlRepository implements IWorkoutSessionsRepository 
       params.push(filter.limit);
     }
 
-    const sql = `SELECT id, block_id, user_id, day_of_week, time, status, metadata FROM workout_sessions WHERE ${conditions.join(' AND ')} ${orderBy} ${limitClause}`;
+    const sql = `SELECT id, plan_session_id, user_id, day_of_week, time, week_number, status, metadata FROM workout_sessions WHERE ${conditions.join(' AND ')} ${orderBy} ${limitClause}`;
     const rows = await this.db.query<WorkoutSessionRow>(sql, params);
     return Promise.all(rows.map((r) => this.toSessionWithExercises(r)));
   }
 
   async findById(id: string): Promise<WorkoutSession | undefined> {
     const row = await this.db.queryOne<WorkoutSessionRow>(
-      'SELECT id, block_id, user_id, day_of_week, time, status, metadata FROM workout_sessions WHERE id = $1',
+      'SELECT id, plan_session_id, user_id, day_of_week, time, week_number, status, metadata FROM workout_sessions WHERE id = $1',
       [id],
     );
     if (!row) return undefined;
@@ -135,16 +137,17 @@ export class WorkoutSessionsSqlRepository implements IWorkoutSessionsRepository 
 
     const row = await this.db.transaction(async (client) => {
       const result = await client.query<WorkoutSessionRow>(
-        `INSERT INTO workout_sessions (id, block_id, user_id, day_of_week, time, status, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
-         RETURNING id, block_id, user_id, day_of_week, time, status, metadata`,
+        `INSERT INTO workout_sessions (id, plan_session_id, user_id, day_of_week, time, status, week_number, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+         RETURNING id, plan_session_id, user_id, day_of_week, time, week_number, status, metadata`,
         [
           id,
-          data.blockId,
+          data.planSessionId,
           data.userId,
           data.dayOfWeek,
           data.time ?? null,
           data.status ?? 'planned',
+          data.weekNumber ?? 1,
           data.metadata ? JSON.stringify(data.metadata) : null,
         ],
       );
@@ -173,7 +176,7 @@ export class WorkoutSessionsSqlRepository implements IWorkoutSessionsRepository 
 
   async update(
     id: string,
-    data: Partial<Omit<WorkoutSession, 'id' | 'userId' | 'blockId'>> & {
+    data: Partial<Omit<WorkoutSession, 'id' | 'userId' | 'planSessionId'>> & {
       exercises?: WorkoutSessionExercise[];
     },
   ): Promise<WorkoutSession | undefined> {
@@ -325,7 +328,7 @@ export class WorkoutSessionsSqlRepository implements IWorkoutSessionsRepository 
       conditions.push(`id != $${params.length}`);
     }
     const row = await this.db.queryOne<WorkoutSessionRow>(
-      `SELECT id, block_id, user_id, day_of_week, time, status, metadata
+      `SELECT id, plan_session_id, user_id, day_of_week, time, week_number, status, metadata
        FROM workout_sessions WHERE ${conditions.join(' AND ')}
        ORDER BY id ASC LIMIT 1`,
       params,
@@ -343,7 +346,7 @@ export class WorkoutSessionsSqlRepository implements IWorkoutSessionsRepository 
 
     const staleDays = dayOrder.slice(0, todayIdx);
     const rows = await this.db.query<WorkoutSessionRow>(
-      `SELECT id, block_id, user_id, day_of_week, time, status, metadata
+      `SELECT id, plan_session_id, user_id, day_of_week, time, week_number, status, metadata
        FROM workout_sessions
        WHERE status = 'planned' AND day_of_week = ANY($1)`,
       [staleDays],
@@ -413,11 +416,11 @@ export class WorkoutSessionsSqlRepository implements IWorkoutSessionsRepository 
     _daysBack: number,
   ): Promise<WorkoutSession[]> {
     const rows = await this.db.query<WorkoutSessionRow>(
-      `SELECT id, block_id, user_id, day_of_week, time, status, metadata
-       FROM workout_sessions
-       WHERE user_id = $1
-         AND status = 'completed'
-       ORDER BY id DESC
+      `SELECT ws.id, ws.plan_session_id, ws.user_id, ws.day_of_week, ws.time, ws.week_number, ws.status, ws.metadata
+       FROM workout_sessions ws
+       WHERE ws.user_id = $1
+         AND ws.status = 'completed'
+       ORDER BY ws.id DESC
        LIMIT 50`,
       [userId],
     );

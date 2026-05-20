@@ -17,10 +17,11 @@ export interface WorkoutSessionMetadata {
 
 export interface WorkoutSession {
   id: string;
-  blockId: string;
+  planSessionId: string;
   userId: string;
   dayOfWeek: DayOfWeek;
   time?: string;
+  weekNumber?: number;
   status?: 'planned' | 'completed' | 'skipped' | 'replaced';
   exercises?: WorkoutSessionExercise[];
   metadata?: WorkoutSessionMetadata;

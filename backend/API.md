@@ -306,22 +306,72 @@ Swagger UI: `/api/docs`
 | PATCH | `/workout-templates/schedule/:scheduleId` | JWT | Обновить запись расписания |
 | DELETE | `/workout-templates/schedule/:scheduleId` | JWT | Удалить запись расписания |
 
-## Training Blocks
+## Training Plans
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| GET | `/training-blocks` | JWT | Все блоки пользователя |
-| GET | `/training-blocks/:id` | JWT | Блок по ID |
-| POST | `/training-blocks` | JWT | Создать блок |
-| PATCH | `/training-blocks/:id` | JWT | Обновить блок |
-| DELETE | `/training-blocks/:id` | JWT | Удалить блок |
+| GET | `/training-plans` | JWT | Все планы пользователя |
+| GET | `/training-plans/:id` | JWT | План по ID (с расписанием) |
+| POST | `/training-plans` | JWT | Создать план |
+| PATCH | `/training-plans/:id` | JWT | Обновить план (только inactive) |
+| DELETE | `/training-plans/:id` | JWT | Удалить план (только inactive) |
+| POST | `/training-plans/:id/activate` | JWT | Активировать план |
+| POST | `/training-plans/:id/archive` | JWT | Архивировать план |
+| POST | `/training-plans/:id/assign` | JWT | Привязать шаблон к дню недели |
+| DELETE | `/training-plans/:id/assign/:dayOfWeek` | JWT | Отвязать шаблон от дня |
+| POST | `/training-plans/sessions/:sessionId/replace` | JWT | Заменить тренировку в запланированной сессии |
+
+### Create Plan
+
+**Body**:
+```json
+{
+  "name": "My Push Pull Legs",
+  "schedule": [
+    { "dayOfWeek": "monday", "workoutTemplateId": "tpl-1", "time": "18:00", "name": "Push Day" }
+  ]
+}
+```
+
+### Activate Plan
+
+```
+POST /training-plans/:id/activate
+```
+
+**Flow:**
+1. Deactivate any other active plan
+2. Set `isActive = true`
+3. Create `TrainingPlanSession { currentWeek: 1, status: 'active', startedAt: today }`
+4. Create first `WorkoutSession` from schedule
+5. Run SetPlanner for planned sets
+
+**Constraint:** Only 1 active plan per user.
+
+### Assign Template
+
+**Body**:
+```json
+{ "dayOfWeek": "monday", "workoutTemplateId": "tpl-1", "time": "18:00", "name": "Push Day" }
+```
+
+Upsert: если день уже привязан — заменяет template.
+
+### Replace Session
+
+**Body**:
+```json
+{ "workoutTemplateId": "tpl-new", "name": "Updated Push Day" }
+```
+
+Only works for `planned` sessions. Completed sessions cannot be replaced.
 
 ## Workout Sessions
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
 | GET | `/workout-sessions` | JWT | Все сессии пользователя (с фильтрацией) |
-| GET | `/workout-sessions/block/:blockId` | JWT | Сессии конкретного блока |
+| GET | `/workout-sessions/plan-session/:planSessionId` | JWT | Сессии конкретной plan session |
 | GET | `/workout-sessions/:id` | JWT | Сессия по ID (с setDetails[]) |
 | POST | `/workout-sessions` | JWT | Создать сессию |
 | POST | `/workout-sessions/:id/complete` | JWT | Завершить сессию с actual-данными |
@@ -346,7 +396,7 @@ Swagger UI: `/api/docs`
 ```json
 {
   "id": "session-1",
-  "blockId": "block-123",
+  "planSessionId": "ps-123",
   "userId": "user-1",
   "dayOfWeek": "monday",
   "status": "planned",
@@ -449,20 +499,28 @@ Swagger UI: `/api/docs`
   "focusMuscles": ["chest", "back"],
   "specificMuscles": ["lats", "rear_delts"],
   "availableEquipment": ["barbell", "dumbbell"],
-  "phase": "accumulation"
+  "phase": "accumulation",
+  "activityLevel": "moderate",
+  "cardioPreference": "running",
+  "primaryLifts": ["squat", "bench"],
+  "enduranceType": "muscular"
 }
 ```
 
 | Поле | Обязателен | Описание |
 |------|-----------|----------|
-| `sessionDurationMin` | Да | Длительность тренировки (20–120 мин) |
+| `sessionDurationMin` | Нет (nullable) | Длительность тренировки (20–120 мин). null = auto |
 | `experienceLevel` | Нет | `beginner`, `intermediate`, `advanced` (default: `intermediate`) |
-| `goal` | Нет | `strength`, `hypertrophy`, `endurance`, `weight_loss`, `general_health`, `rehab`, `mobility` |
+| `goal` | Нет | `strength`, `hypertrophy`, `endurance`, `weight_loss`, `general_health`, `rehab`, `mobility`, `glute_growth`, `recomposition` |
 | `focusMuscles` | Нет | Мышечные группы для акцента (`chest`, `back`, `legs`, `shoulders`, `arms`, `core`) |
 | `specificMuscles` | Нет | Конкретные мышцы для приоритета (`lats`, `rear_delts`, `upper_chest` и т.д.) |
 | `availableEquipment` | Нет | Slug-коды оборудования; пустой массив = только bodyweight |
 | `equipmentPresetId` | Нет | ID пресета оборудования — переопределяет `availableEquipment` |
 | `phase` | Нет | Фаза периодизации (`accumulation`, `intensification`, `realization`, `deload`) |
+| `activityLevel` | Нет | `sedentary`, `light`, `moderate`, `active` — влияет на объём |
+| `cardioPreference` | Нет | `running`, `cycling`, `rowing`, `jump_rope`, `swimming`, `any` |
+| `primaryLifts` | Нет | Массив: `squat`, `bench`, `deadlift`, `ohp` |
+| `enduranceType` | Нет | `muscular`, `cardio`, `mixed` |
 
 **Response**:
 ```json
@@ -551,25 +609,37 @@ Swagger UI: `/api/docs`
   "sessionDurationMin": 60,
   "experienceLevel": "intermediate",
   "goal": "hypertrophy",
-  "availableEquipment": ["barbell", "dumbbell", "cable"]
+  "availableEquipment": ["barbell", "dumbbell", "cable"],
+  "splitType": "auto",
+  "activityLevel": "moderate",
+  "cardioPreference": "running",
+  "primaryLifts": ["squat", "bench"],
+  "enduranceType": "muscular",
+  "targetWeightKg": 75
 }
 ```
 
 | Поле | Обязателен | Описание |
 |------|-----------|----------|
-| `availableDays` | Да | Дни недели, в которые можно тренироваться |
-| `trainingCountPerWeek` | Да | Количество тренировок (2–6) |
-| `sessionDurationMin` | Да | Длительность одной тренировки (20–120 мин) |
+| `availableDays` | Нет | Дни недели, в которые можно тренироваться. Пустой = все дни (auto) |
+| `trainingCountPerWeek` | Нет (nullable) | Количество тренировок (2–6). null = auto |
+| `sessionDurationMin` | Нет (nullable) | Длительность одной тренировки (20–120 мин). null = auto |
 | `experienceLevel` | Нет | Определяет сплит и объём (default: `intermediate`) |
-| `goal` | Нет | Цель (default: `general_health`) |
+| `goal` | Нет | Цель (default: `general_health`). 9 вариантов |
 | `availableEquipment` | Нет | Оборудование; берётся из профиля если не указано |
 | `equipmentPresetId` | Нет | ID пресета оборудования — переопределяет `availableEquipment` |
 | `phase` | Нет | Фаза периодизации |
+| `splitType` | Нет | `auto`, `full_body`, `upper_lower`, `ppl` (default: `auto`) |
+| `activityLevel` | Нет | `sedentary`, `light`, `moderate`, `active` |
+| `cardioPreference` | Нет | `running`, `cycling`, `rowing`, `jump_rope`, `swimming`, `any` |
+| `primaryLifts` | Нет | Массив: `squat`, `bench`, `deadlift`, `ohp` |
+| `enduranceType` | Нет | `muscular`, `cardio`, `mixed` |
+| `targetWeightKg` | Нет | Целевой вес (для weight_loss) |
 
 **Response**:
 ```json
 {
-  "blockId": "abc123",
+  "planId": "abc123",
   "splitName": "ppl",
   "sessions": [
     {
@@ -643,6 +713,8 @@ Swagger UI: `/api/docs`
   "options": [
     { "value": "strength", "label": "Сила" },
     { "value": "hypertrophy", "label": "Рост мышц (гипертрофия)" },
+    { "value": "glute_growth", "label": "Накачать ягодицы" },
+    { "value": "recomposition", "label": "Рельеф / подтянутое тело" },
     { "value": "endurance", "label": "Выносливость" },
     { "value": "weight_loss", "label": "Похудение" },
     { "value": "general_health", "label": "Общее здоровье" },
@@ -694,8 +766,15 @@ Swagger UI: `/api/docs`
 | 5 | `equipment_preset` | Выберите оборудование или пресет | single | Пропускается если `availableEquipment` уже задан; если выбран пресет → шаг `equipment` пропускается |
 | 6 | `equipment` | Какое оборудование доступно? | multi | Пропускается если выбран пресет; Пропускается если `user.metadata.availableEquipment` |
 | 7 | `frequency` | Сколько тренировок в неделю? | single | Только для `plan_type=weekly` |
-| 8 | `days` | В какие дни удобно тренироваться? | multi | Только для `plan_type=weekly` |
+| 8 | `days` | В какие дни удобно тренироваться? | multi | Только для `plan_type=weekly`; Пропускается если frequency=auto |
 | 9 | `duration` | Сколько минут длится тренировка? | single | — |
+| 10 | `advanced_settings` | Хотите настроить тренировки подробнее? | single | Gate: "Рекомендуемые" → пропустить шаги 11-16 |
+| 11 | `split` | Какой тип сплита предпочитаете? | single | Только weekly + manual |
+| 12 | `activity_level` | Уровень повседневной активности? | single | Только manual |
+| 13 | `cardio_preference` | Какой вид кардио предпочитаете? | single | Только weight_loss/endurance + manual |
+| 14 | `primary_lifts` | Вокруг каких базовых движений? | multi | Только strength/glute_growth + manual |
+| 15 | `endurance_type` | Какой тип выносливости? | single | Только endurance + manual |
+| 16 | `target_weight` | Ваш целевой вес (кг)? | number | Только weight_loss + manual |
 
 ## Home
 
@@ -703,7 +782,7 @@ Swagger UI: `/api/docs`
 
 ### GET /home/data
 
-Возвращает активный тренировочный блок, сессии на запрошенную неделю и статус текущей тренировки.
+Возвращает активный тренировочный план, сессии на запрошенную неделю и статус текущей тренировки.
 
 **Query params**:
 
@@ -715,9 +794,9 @@ Swagger UI: `/api/docs`
 ```json
 {
   "activeBlock": {
-    "id": "block-123",
+    "id": "plan-123",
     "name": "Push Pull Legs",
-    "type": "base",
+    "type": "milp",
     "durationWeeks": 4,
     "goal": "hypertrophy",
     "splitName": "ppl",
@@ -747,11 +826,144 @@ Swagger UI: `/api/docs`
 }
 ```
 
-- `activeBlock` — последний созданный `TrainingBlock` пользователя. `null` если блоков нет
-- `weekSessions` — сессии блока на запрошенную неделю (вычисление даты из `dayOfWeek` + `weekStart`)
+- `activeBlock` — активный `TrainingPlan` пользователя. `null` если планов нет
+- `weekSessions` — сессии плана на запрошенную неделю (вычисление даты из `dayOfWeek` + `weekStart`)
 - `todaySession` — сессия на сегодняшний день недели. `null` если сегодня нет тренировки
-- `currentWeek` — вычисляется из ID блока (ID содержит `Date.now()` timestamp)
+- `currentWeek` — текущая неделя активной TrainingPlanSession
 - `description` — маппинг `sessionType` на русский: `push` → "Грудь + плечи + трицепс", `pull` → "Спина + бицепс", `legs` → "Ноги", `upper` → "Верх тела", `lower` → "Низ тела", `full_body` → "Все тело"
+
+## Chat
+
+Unified chat with two modes: `chat` (free conversation with AI trainer) and `workout` (workout creation via dialog). All endpoints require JWT.
+
+### POST /chat/sessions
+
+Create a new chat session.
+
+**Body**:
+```json
+{
+  "mode": "chat",
+  "title": "Вопросы о тренировках"
+}
+```
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `mode` | No | `chat` (default) or `workout` |
+| `title` | No | Auto-generated from first message if omitted |
+
+If `mode = 'workout'`, automatically starts a workout dialog and returns the first dialog step as an assistant message.
+
+**Response**:
+```json
+{
+  "id": "session-1",
+  "mode": "chat",
+  "title": null,
+  "createdAt": "2026-05-19T12:00:00.000Z"
+}
+```
+
+### GET /chat/sessions
+
+List all chat sessions for the current user, ordered by creation date (newest first).
+
+### GET /chat/sessions/:id
+
+Get a chat session with all messages.
+
+**Response**:
+```json
+{
+  "id": "session-1",
+  "mode": "chat",
+  "dialogId": null,
+  "title": "Как набрать массу?",
+  "createdAt": "2026-05-19T12:00:00.000Z",
+  "messages": [
+    {
+      "id": "msg-1",
+      "role": "user",
+      "content": "Как набрать мышечную массу?",
+      "metadata": null,
+      "createdAt": "2026-05-19T12:00:01.000Z"
+    },
+    {
+      "id": "msg-2",
+      "role": "assistant",
+      "content": "Для роста мышц нужны три условия...",
+      "metadata": null,
+      "createdAt": "2026-05-19T12:00:02.000Z"
+    }
+  ]
+}
+```
+
+### DELETE /chat/sessions/:id
+
+Delete a chat session with all messages. Returns 404 if not found.
+
+### POST /chat/sessions/:id/messages
+
+Send a message in a chat session. Behavior depends on session mode.
+
+**Body**:
+```json
+{
+  "content": "Как набрать мышечную массу?"
+}
+```
+
+**Response (chat mode)**:
+```json
+{
+  "userMessageId": "msg-1",
+  "assistantMessageId": "msg-2",
+  "content": "Для роста мышц нужны три условия...",
+  "mode": "chat"
+}
+```
+
+**Response (workout mode — dialog step)**:
+```json
+{
+  "userMessageId": "msg-1",
+  "assistantMessageId": "msg-2",
+  "content": "Какова ваша основная цель?",
+  "mode": "workout",
+  "dialogStep": "goal"
+}
+```
+
+**Response (workout mode — dialog complete)**:
+```json
+{
+  "userMessageId": "msg-15",
+  "assistantMessageId": "msg-16",
+  "content": "Отлично! Я собрал все параметры...",
+  "mode": "workout",
+  "dialogCompleted": true,
+  "workoutResult": {
+    "type": "workout_params",
+    "planType": "weekly",
+    "params": { "goal": "hypertrophy", "experienceLevel": "intermediate", "..." : "..." }
+  }
+}
+```
+
+### PATCH /chat/sessions/:id/mode
+
+Switch chat mode (chat ↔ workout).
+
+**Body**:
+```json
+{
+  "mode": "workout"
+}
+```
+
+When switching to `workout`, automatically starts a new workout dialog and sends the first step as an assistant message.
 
 ## Static Files
 

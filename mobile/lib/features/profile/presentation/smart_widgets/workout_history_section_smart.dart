@@ -15,8 +15,8 @@ class WorkoutHistorySectionSmart extends ConsumerWidget {
     return sessionsAsync.when(
       data: (sessions) => WorkoutHistorySection(
         sessions: sessions,
-        onSessionTap: (id) => context.push('/workouts/$id'),
-        onViewAll: () => context.push('/workouts'),
+        onSessionTap: (id) => context.push('/workout-session/$id'),
+        onViewAll: () => context.push('/workout-history'),
       ),
       loading: () => const WorkoutHistorySection.loading(),
       error: (_, __) => const WorkoutHistorySection(

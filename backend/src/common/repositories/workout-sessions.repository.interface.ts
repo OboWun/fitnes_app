@@ -15,7 +15,7 @@ export interface WorkoutSessionsFilter {
 }
 
 export interface IWorkoutSessionsRepository {
-  findByBlockId(blockId: string): Promise<WorkoutSession[]>;
+  findByPlanSessionId(planSessionId: string): Promise<WorkoutSession[]>;
   findByUserId(userId: string, filter?: WorkoutSessionsFilter): Promise<WorkoutSession[]>;
   findById(id: string): Promise<WorkoutSession | undefined>;
   create(
@@ -23,7 +23,7 @@ export interface IWorkoutSessionsRepository {
   ): Promise<WorkoutSession>;
   update(
     id: string,
-    data: Partial<Omit<WorkoutSession, 'id' | 'userId' | 'blockId'>> & {
+    data: Partial<Omit<WorkoutSession, 'id' | 'userId'>> & {
       exercises?: WorkoutSessionExercise[];
     },
   ): Promise<WorkoutSession | undefined>;

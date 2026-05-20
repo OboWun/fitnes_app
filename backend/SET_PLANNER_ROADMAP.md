@@ -11,7 +11,8 @@ SetPlanner (`src/workout-sessions/set-planner.service.ts`) использует 
    - Остальное → без изменений
 3. **Warmup**: compound (bar × 15, 50% × 10, 75% × 8) при рабочем весе > 40 kg
 4. **Дефолты**: по experienceLevel при отсутствии истории
-5. **Fatigue**: `applyFatigueAdjustment()` — stub, возвращает вес без изменений
+5. **BMI-корректировка**: BMI > 30 → ×1.2, BMI < 18.5 → ×0.85
+6. **Fatigue**: `applyFatigueAdjustment()` — stub, возвращает вес без изменений
 
 ## Phase 2: Regression Model
 

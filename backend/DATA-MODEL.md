@@ -152,7 +152,7 @@
 }
 ```
 
-## ScheduledWorkout
+## ScheduledWorkout (deprecated)
 
 ```typescript
 {
@@ -165,7 +165,92 @@
 }
 ```
 
-## TrainingBlock
+**Note:** Replaced by `TrainingPlanScheduleItem`. Table `scheduled_workouts` still exists but is no longer actively used.
+
+## TrainingPlan
+
+```typescript
+{
+  id: string;
+  userId: string;
+  name: string;
+  isActive: boolean;
+  source?: 'manual' | 'milp';
+  schedule?: TrainingPlanScheduleItem[];
+  createdAt: string;
+}
+```
+
+**Constraints:**
+- `isActive` — только один план может быть активным у юзера
+- `source`: `'manual'` или `'milp'`
+- Plan can only be updated/deleted when inactive
+
+**Таблица БД:**
+```sql
+CREATE TABLE training_plans (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT false,
+  source TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+### TrainingPlanScheduleItem
+
+```typescript
+{
+  dayOfWeek: DayOfWeek;
+  workoutTemplateId: string;
+  time?: string;
+  name?: string;
+  sortOrder: number;
+}
+```
+
+**Таблица БД:**
+```sql
+CREATE TABLE training_plan_schedule (
+  plan_id TEXT NOT NULL REFERENCES training_plans(id) ON DELETE CASCADE,
+  day_of_week TEXT NOT NULL,
+  workout_template_id TEXT NOT NULL REFERENCES workout_templates(id) ON DELETE CASCADE,
+  time TEXT,
+  name TEXT,
+  sort_order INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (plan_id, day_of_week)
+);
+```
+
+### TrainingPlanSession
+
+```typescript
+{
+  id: string;
+  planId: string;
+  userId: string;
+  startedAt: string;
+  currentWeek: number;
+  status: 'active' | 'completed' | 'archived';
+  createdAt: string;
+}
+```
+
+**Таблица БД:**
+```sql
+CREATE TABLE training_plan_sessions (
+  id TEXT PRIMARY KEY,
+  plan_id TEXT NOT NULL REFERENCES training_plans(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  started_at DATE NOT NULL,
+  current_week INT NOT NULL DEFAULT 1,
+  status TEXT NOT NULL DEFAULT 'active',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+## TrainingBlock (deprecated)
 
 ```typescript
 {
@@ -180,6 +265,8 @@
   metadata?: TrainingBlockMetadata;
 }
 ```
+
+**Note:** Module removed. Entity file still exists in `src/entities/training-block.entity.ts` but is no longer actively used. Table `training_blocks` still exists in DB.
 
 ### TrainingBlockMetadata
 
@@ -203,10 +290,11 @@
 ```typescript
 {
   id: string;
-  blockId: string;
+  planSessionId?: string;
   userId: string;
   dayOfWeek: DayOfWeek;
   time?: string;
+  weekNumber?: number;
   status?: 'planned' | 'completed' | 'skipped' | 'replaced';
   exercises?: WorkoutSessionExercise[];
   metadata?: WorkoutSessionMetadata;
@@ -305,6 +393,7 @@ CREATE TABLE workout_session_sets (
 - Compound exercises (movement_pattern: squat/press/pull/hinge/row/lunge): warmup + working sets
 - Cardio (movement_pattern: locomotion): 1 set с duration + distance
 - Bodyweight: planned_weight = user.weight, actual = weight + added
+- BMI-based default weight: BMI > 30 → ×1.2, BMI < 18.5 → ×0.85
 
 **Вспомогательные типы:**
 ```typescript
@@ -355,6 +444,67 @@ CREATE TABLE workout_dialogs (
   "sessionDurationMin": 60
 }
 ```
+
+## EquipmentPreset
+
+## ChatSession
+
+```typescript
+{
+  id: string;
+  userId: string;
+  mode: 'chat' | 'workout';
+  dialogId?: string;
+  title?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+**Таблица БД:**
+```sql
+CREATE TABLE chat_sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  mode TEXT NOT NULL DEFAULT 'chat',
+  dialog_id TEXT,
+  title TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+- `mode`: `chat` (free conversation with AI trainer) or `workout` (workout creation via dialog)
+- `dialog_id`: references `workout_dialogs(id)` when mode = `workout`
+- `title`: auto-generated from first user message if not provided
+
+## ChatMessage
+
+```typescript
+{
+  id: string;
+  sessionId: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+```
+
+**Таблица БД:**
+```sql
+CREATE TABLE chat_messages (
+  id TEXT PRIMARY KEY,
+  session_id TEXT NOT NULL REFERENCES chat_sessions(id) ON DELETE CASCADE,
+  role TEXT NOT NULL,
+  content TEXT NOT NULL,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+```
+
+- `role`: `user` (user input), `assistant` (AI/dialog response), `system` (mode switch notifications)
+- `metadata`: dialog step info (`type`, `step`, `inputType`, `options`, `canSkip`) or workout result (`type: 'workout_params'`)
 
 ## EquipmentPreset
 
@@ -434,13 +584,18 @@ User ---* workoutTemplates ---> WorkoutTemplate
 User ---* workoutDialogs ---> WorkoutDialog
 User ---* equipmentPresets ---> EquipmentPreset
 User ---* weightLogs ---> WeightLog
+User ---* trainingPlans ---> TrainingPlan
 EquipmentPreset ---* equipmentSlugs ---> Equipment (via slug)
 WorkoutTemplate ---* exercises ---> WorkoutExercise (via exerciseSlug)
-WorkoutTemplate ---* scheduledWorkouts ---> ScheduledWorkout
-WorkoutTemplate ---* trainingBlocks ---> TrainingBlock
-TrainingBlock ---* sessions ---> WorkoutSession
+WorkoutTemplate ---* scheduledWorkouts ---> ScheduledWorkout (deprecated)
+TrainingPlan ---* schedule ---> TrainingPlanScheduleItem
+TrainingPlanScheduleItem ---> workoutTemplateId ---> WorkoutTemplate
+TrainingPlan ---* sessions ---> TrainingPlanSession
+TrainingPlanSession ---* workoutSessions ---> WorkoutSession
 WorkoutSession ---* exercises ---> WorkoutSessionExercise
 WorkoutSession ---* sets ---> WorkoutSessionSet (per exercise in session)
-ScheduledWorkout ---> templateId ---> WorkoutTemplate
-WorkoutSession ---> blockId ---> TrainingBlock
+User ---* chatSessions ---> ChatSession
+ChatSession ---* messages ---> ChatMessage
+ChatSession ---> dialogId ---> WorkoutDialog (when mode=workout)
+ScheduledWorkout ---> templateId ---> WorkoutTemplate (deprecated)
 ```

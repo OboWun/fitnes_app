@@ -7,14 +7,14 @@ import {
   EXERCISES_REPOSITORY,
   WORKOUT_TEMPLATES_REPOSITORY,
   USERS_REPOSITORY,
-  TRAINING_BLOCKS_REPOSITORY,
+  TRAINING_PLANS_REPOSITORY,
   WORKOUT_SESSIONS_REPOSITORY,
   EQUIPMENT_PRESETS_REPOSITORY,
 } from '../common/repositories/index.js';
 import { ExercisesSqlRepository } from '../exercises/exercises-sql.repository.js';
 import { WorkoutTemplatesSqlRepository } from '../workout-templates/workout-templates-sql.repository.js';
 import { UsersSqlRepository } from '../users/users-sql.repository.js';
-import { TrainingBlocksSqlRepository } from '../training-blocks/training-blocks-sql.repository.js';
+import { TrainingPlansSqlRepository } from '../training-plans/training-plans-sql.repository.js';
 import { WorkoutSessionsSqlRepository } from '../workout-sessions/workout-sessions-sql.repository.js';
 import { EquipmentPresetsSqlRepository } from '../equipment-presets/equipment-presets-sql.repository.js';
 
@@ -37,8 +37,8 @@ import { EquipmentPresetsSqlRepository } from '../equipment-presets/equipment-pr
       useClass: UsersSqlRepository,
     },
     {
-      provide: TRAINING_BLOCKS_REPOSITORY,
-      useClass: TrainingBlocksSqlRepository,
+      provide: TRAINING_PLANS_REPOSITORY,
+      useClass: TrainingPlansSqlRepository,
     },
     {
       provide: WORKOUT_SESSIONS_REPOSITORY,

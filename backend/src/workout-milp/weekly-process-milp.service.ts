@@ -1,21 +1,20 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { WorkoutMilpService } from './workout-milp.service.js';
 import type {
   WorkoutMILPInput,
   WorkoutMILPOutput,
 } from './workout-milp.service.js';
-import { SetPlannerService } from '../workout-sessions/set-planner.service.js';
 import {
-  TRAINING_BLOCKS_REPOSITORY,
-  WORKOUT_SESSIONS_REPOSITORY,
+  TRAINING_PLANS_REPOSITORY,
+  WORKOUT_TEMPLATES_REPOSITORY,
   USERS_REPOSITORY,
 } from '../common/repositories/index.js';
 import type {
-  ITrainingBlocksRepository,
-  IWorkoutSessionsRepository,
+  ITrainingPlansRepository,
+  IWorkoutTemplatesRepository,
   IUsersRepository,
 } from '../common/repositories/index.js';
-import type { DayOfWeek } from '../entities/index.js';
+import type { DayOfWeek, WorkoutExercise } from '../entities/index.js';
 
 type SessionSlot = 'full_body' | 'upper' | 'lower' | 'push' | 'pull' | 'legs';
 
@@ -116,6 +115,41 @@ const GOALS_PREFER_FULL_BODY = new Set([
 ]);
 const GOALS_FORCE_FULL_BODY = new Set(['rehab', 'mobility']);
 
+const OPTIMAL_FREQUENCY: Record<string, Record<string, number>> = {
+  beginner: { default: 3 },
+  intermediate: { strength: 4, hypertrophy: 4, glute_growth: 4, recomposition: 3, default: 3 },
+  advanced: { strength: 5, hypertrophy: 5, glute_growth: 5, recomposition: 4, default: 4 },
+};
+
+const ALL_DAYS: DayOfWeek[] = [
+  'monday',
+  'tuesday',
+  'wednesday',
+  'thursday',
+  'friday',
+  'saturday',
+  'sunday',
+];
+
+const SPLIT_TYPE_SESSIONS: Record<string, SessionSlot[]> = {
+  full_body: ['full_body', 'full_body', 'full_body'],
+  upper_lower: ['upper', 'lower', 'upper', 'lower'],
+  ppl: ['push', 'pull', 'legs'],
+};
+
+const ACTIVITY_VOLUME_SCALE: Record<string, number> = {
+  sedentary: 0.7,
+  light: 0.85,
+  moderate: 1.0,
+  active: 1.1,
+};
+
+const DEFAULT_SESSION_DURATION: Record<string, Record<string, number>> = {
+  beginner: { default: 45 },
+  intermediate: { strength: 60, hypertrophy: 60, glute_growth: 60, recomposition: 60, default: 45 },
+  advanced: { strength: 75, hypertrophy: 75, glute_growth: 75, recomposition: 75, default: 60 },
+};
+
 const MUSCLE_GROUP_EXPANSION: Record<string, string[]> = {
   chest: ['chest'],
   back: [
@@ -203,19 +237,28 @@ const GOAL_REST_SEC: Record<string, number> = {
 
 export interface WeeklyProcessInput {
   userId: string;
-  availableDays: DayOfWeek[];
-  trainingCountPerWeek: number;
-  sessionDurationMin: number;
+  availableDays: DayOfWeek[] | null;
+  trainingCountPerWeek: number | null;
+  sessionDurationMin: number | null;
   experienceLevel: string;
   goal: string;
   gender: string;
   availableEquipment: string[];
   phase?: string;
   userContraindications?: string[];
+  splitType?: string;
+  activityLevel?: string;
+  cardioPreference?: string;
+  primaryLifts?: string[];
+  enduranceType?: string;
+  targetWeightKg?: number;
+  age?: number;
+  heightCm?: number;
+  weightKg?: number;
 }
 
 export interface WeeklyProcessOutput {
-  blockId: string;
+  planId: string;
   splitName: string;
   sessions: {
     dayOfWeek: DayOfWeek;
@@ -237,13 +280,14 @@ export interface WeeklyProcessOutput {
 
 @Injectable()
 export class WeeklyProcessMilpService {
+  private readonly logger = new Logger(WeeklyProcessMilpService.name);
+
   constructor(
     private readonly workoutMilpService: WorkoutMilpService,
-    private readonly setPlannerService: SetPlannerService,
-    @Inject(TRAINING_BLOCKS_REPOSITORY)
-    private readonly blocksRepository: ITrainingBlocksRepository,
-    @Inject(WORKOUT_SESSIONS_REPOSITORY)
-    private readonly sessionsRepository: IWorkoutSessionsRepository,
+    @Inject(TRAINING_PLANS_REPOSITORY)
+    private readonly plansRepository: ITrainingPlansRepository,
+    @Inject(WORKOUT_TEMPLATES_REPOSITORY)
+    private readonly templatesRepository: IWorkoutTemplatesRepository,
     @Inject(USERS_REPOSITORY)
     private readonly usersRepository: IUsersRepository,
   ) {}
@@ -251,17 +295,37 @@ export class WeeklyProcessMilpService {
   async generateWeeklyPlan(
     input: WeeklyProcessInput,
   ): Promise<WeeklyProcessOutput> {
-    const strategy = this.selectSplit(
+    this.logger.log(`Generating weekly plan for user ${input.userId}, goal=${input.goal}, level=${input.experienceLevel}`);
+
+    const level = input.experienceLevel;
+    const goal = input.goal;
+
+    const trainingCountPerWeek = this.resolveFrequency(
       input.trainingCountPerWeek,
-      input.experienceLevel,
-      input.goal,
+      level,
+      goal,
     );
+
+    const sessionDurationMin = this.resolveSessionDuration(
+      input.sessionDurationMin,
+      level,
+      goal,
+    );
+
+    const availableDays = input.availableDays?.length
+      ? input.availableDays
+      : [...ALL_DAYS];
+
+    const strategy = input.splitType && input.splitType !== 'auto'
+      ? this.buildStrategyFromSplitType(input.splitType, trainingCountPerWeek, goal, level)
+      : this.selectSplit(trainingCountPerWeek, level, goal);
+
     const assignedDays = this.assignDays(
-      input.availableDays,
+      availableDays,
       strategy.sessions.length,
     );
 
-    const weeklyBudget = this.computeWeeklyVolumeBudget(input.experienceLevel);
+    const weeklyBudget = this.computeWeeklyVolumeBudget(level, input.activityLevel, input.age);
     const sessionsPerMuscle = this.computeSessionsPerMuscle(strategy.sessions);
 
     const accumulatedVolume: Record<string, number> = {};
@@ -300,16 +364,17 @@ export class WeeklyProcessMilpService {
         weeklyBudget,
         sessionsPerMuscle,
         accumulatedVolume,
-        input.sessionDurationMin,
+        sessionDurationMin,
         compoundSets,
         isolationSets,
         restSec,
         input.gender,
+        goal,
       );
 
       const workoutInput: WorkoutMILPInput = {
         userId: input.userId,
-        sessionDurationMin: input.sessionDurationMin,
+        sessionDurationMin,
         experienceLevel: input.experienceLevel,
         goal: input.goal,
         focusMuscles: sessionParams.focusMuscles,
@@ -326,10 +391,19 @@ export class WeeklyProcessMilpService {
         userContraindications: input.userContraindications ?? [],
         gender: input.gender,
         weeklyVolumeByMuscle: { ...accumulatedVolume },
+        activityLevel: input.activityLevel,
+        cardioPreference: input.cardioPreference,
+        primaryLifts: input.primaryLifts,
+        enduranceType: input.enduranceType,
+        age: input.age,
+        heightCm: input.heightCm,
+        weightKg: input.weightKg,
       };
 
       const result =
         await this.workoutMilpService.generateWorkout(workoutInput);
+
+      this.logger.log(`Session ${i + 1}/${strategy.sessions.length}: ${slot} on ${day}, ${result.exercises.length} exercises, fallback=${result.usedFallback}`);
 
       for (const [muscle, load] of Object.entries(result.totalLoadByMuscle)) {
         fatigueByMuscle[muscle] = (fatigueByMuscle[muscle] ?? 0) + load;
@@ -361,55 +435,55 @@ export class WeeklyProcessMilpService {
       });
     }
 
-    const block = await this.blocksRepository.create({
-      userId: input.userId,
-      name: `Week Plan ${new Date().toISOString().slice(0, 10)}`,
-      type: 'base',
-      index: 0,
-      durationWeeks: 1,
-      metadata: {
-        phase: input.phase,
-        splitName: strategy.name,
-        experienceLevel: input.experienceLevel,
-        goal: input.goal,
-        gender: input.gender,
-      },
-    });
+    const scheduleEntries: { dayOfWeek: string; templateId: string; name: string; sortOrder: number }[] = [];
 
     for (const session of sessions) {
-      await this.sessionsRepository.create({
-        blockId: block.id,
+      const exercises: WorkoutExercise[] = session.exercises.map((e) => ({
+        exerciseSlug: e.exerciseSlug,
+        sets: e.sets,
+        reps: e.repsPerSet,
+        order: e.order,
+      }));
+
+      const template = await this.templatesRepository.create({
         userId: input.userId,
-        dayOfWeek: session.dayOfWeek,
-        status: 'planned',
+        name: `${strategy.name} — ${session.sessionType} (${session.dayOfWeek})`,
+        description: `Auto-generated ${session.sessionType} session`,
+        exercises,
         metadata: {
-          sessionDurationMin: input.sessionDurationMin,
-          sessionType: session.sessionType,
-          repsPerSet: session.repsPerSet,
-          sessionLoadByMuscle: Object.entries(session.loadByMuscle).map(
-            ([slug, load]) => ({ slug, load }),
-          ),
+          sessionDurationMin,
+          trainingGoal: input.goal,
+          blockType: session.sessionType,
         },
-        exercises: session.exercises.map((e) => ({
-          exerciseSlug: e.exerciseSlug,
-          sets: e.sets,
-          order: e.order,
-        })),
       });
+
+      scheduleEntries.push({
+        dayOfWeek: session.dayOfWeek,
+        templateId: template.id,
+        name: session.sessionType,
+        sortOrder: scheduleEntries.length,
+      });
+
+      this.logger.log(`Created template ${template.id} for ${session.dayOfWeek} (${session.sessionType}), ${exercises.length} exercises`);
     }
 
-    const firstPlanned = await this.sessionsRepository.findNextPlannedByUserId(input.userId);
-    if (firstPlanned) {
-      try {
-        await this.setPlannerService.planSetsForSession(firstPlanned);
-      } catch (e) {
-        const err = e as Error;
-        console.warn(`SetPlanner failed for session ${firstPlanned.id}: ${err.message}`);
-      }
-    }
+    const plan = await this.plansRepository.create({
+      userId: input.userId,
+      name: `MILP ${strategy.name} ${new Date().toISOString().slice(0, 10)}`,
+      isActive: false,
+      source: 'milp',
+      schedule: scheduleEntries.map((s) => ({
+        dayOfWeek: s.dayOfWeek as DayOfWeek,
+        workoutTemplateId: s.templateId,
+        name: s.name,
+        sortOrder: s.sortOrder,
+      })),
+    });
+
+    this.logger.log(`Created plan ${plan.id} (${strategy.name}) with ${scheduleEntries.length} scheduled days for user ${input.userId}`);
 
     return {
-      blockId: block.id,
+      planId: plan.id,
       splitName: strategy.name,
       sessions,
       totalWeeklyLoad,
@@ -455,6 +529,52 @@ export class WeeklyProcessMilpService {
     }
 
     return strategy;
+  }
+
+  private resolveFrequency(
+    count: number | null,
+    level: string,
+    goal: string,
+  ): number {
+    if (count != null) return count;
+    const levelFreqs = OPTIMAL_FREQUENCY[level] ?? OPTIMAL_FREQUENCY.intermediate;
+    return levelFreqs[goal] ?? levelFreqs.default ?? 3;
+  }
+
+  private resolveSessionDuration(
+    duration: number | null,
+    level: string,
+    goal: string,
+  ): number {
+    if (duration != null) return duration;
+    const levelDurations = DEFAULT_SESSION_DURATION[level] ?? DEFAULT_SESSION_DURATION.intermediate;
+    return levelDurations[goal] ?? levelDurations.default ?? 60;
+  }
+
+  private buildStrategyFromSplitType(
+    splitType: string,
+    count: number,
+    goal: string,
+    level: string,
+  ): SplitStrategy {
+    const baseSessions = SPLIT_TYPE_SESSIONS[splitType] ?? SPLIT_TYPE_SESSIONS.full_body;
+    let sessions = [...baseSessions];
+
+    if (GOALS_FORCE_FULL_BODY.has(goal)) {
+      sessions = Array(count).fill('full_body') as SessionSlot[];
+      return { name: 'full_body', sessions };
+    }
+
+    while (sessions.length < count) {
+      sessions = [...sessions, ...baseSessions];
+    }
+    sessions = sessions.slice(0, count);
+
+    if (level === 'beginner' && count > 3) {
+      sessions = sessions.slice(0, 3);
+    }
+
+    return { name: splitType, sessions };
   }
 
   private assignDays(
@@ -536,8 +656,15 @@ export class WeeklyProcessMilpService {
     return [...withFirst, ...withoutFirst];
   }
 
-  private computeWeeklyVolumeBudget(level: string): Record<string, number> {
-    const scale = EXPERIENCE_WEEKLY_SCALE[level] ?? 1.0;
+  private computeWeeklyVolumeBudget(level: string, activityLevel?: string, age?: number): Record<string, number> {
+    let scale = EXPERIENCE_WEEKLY_SCALE[level] ?? 1.0;
+    if (activityLevel) {
+      scale *= ACTIVITY_VOLUME_SCALE[activityLevel] ?? 1.0;
+    }
+    if (age) {
+      const ageBucket = age < 25 ? 1.1 : age <= 40 ? 1.0 : age <= 55 ? 0.85 : 0.7;
+      scale *= ageBucket;
+    }
     const budget: Record<string, number> = {};
     for (const [muscle, target] of Object.entries(
       MUSCLE_WEEKLY_VOLUME_TARGETS,
@@ -574,6 +701,7 @@ export class WeeklyProcessMilpService {
     isolationSets: number,
     restSec: number,
     gender: string,
+    goal: string,
   ): {
     focusMuscles: string[];
     specificMuscles: string[];
@@ -628,6 +756,21 @@ export class WeeklyProcessMilpService {
         if (!mandatoryMuscles.includes(m)) {
           mandatoryMuscles.push(m);
         }
+      }
+    }
+
+    if (goal === 'glute_growth') {
+      const gluteExtra = ['glutes', 'hamstrings', 'adductors'];
+      if (['lower', 'legs', 'full_body'].includes(slot)) {
+        gluteExtra.push('abductors');
+      }
+      for (const m of gluteExtra) {
+        if (!mandatoryMuscles.includes(m)) {
+          mandatoryMuscles.push(m);
+        }
+      }
+      if (!focusMuscles.includes('legs')) {
+        focusMuscles.push('legs');
       }
     }
 

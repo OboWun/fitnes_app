@@ -7,6 +7,8 @@ import {
   IsEnum,
   Min,
   Max,
+  ValidateIf,
+  IsIn,
 } from 'class-validator';
 
 export enum ExperienceLevel {
@@ -23,14 +25,31 @@ export enum TrainingGoal {
   GENERAL_HEALTH = 'general_health',
   REHAB = 'rehab',
   MOBILITY = 'mobility',
+  GLUTE_GROWTH = 'glute_growth',
+  RECOMPOSITION = 'recomposition',
+}
+
+export enum ActivityLevel {
+  SEDENTARY = 'sedentary',
+  LIGHT = 'light',
+  MODERATE = 'moderate',
+  ACTIVE = 'active',
 }
 
 export class GenerateWorkoutDto {
-  @ApiProperty({ example: 60, minimum: 20, maximum: 120 })
+  @ApiPropertyOptional({
+    example: 60,
+    minimum: 20,
+    maximum: 120,
+    nullable: true,
+    description: 'Session duration in minutes. null = auto from goal+experience',
+  })
+  @IsOptional()
+  @ValidateIf((o) => o.sessionDurationMin !== null)
   @IsNumber()
   @Min(20)
   @Max(120)
-  sessionDurationMin!: number;
+  sessionDurationMin?: number | null;
 
   @ApiPropertyOptional({ example: 'intermediate', enum: ExperienceLevel })
   @IsOptional()
@@ -82,4 +101,29 @@ export class GenerateWorkoutDto {
   @IsOptional()
   @IsString()
   phase?: string;
+
+  @ApiPropertyOptional({ enum: ActivityLevel, description: 'Daily activity level. Affects weekly volume scale' })
+  @IsOptional()
+  @IsEnum(ActivityLevel)
+  activityLevel?: ActivityLevel;
+
+  @ApiPropertyOptional({ description: 'Preferred cardio type for weight_loss' })
+  @IsOptional()
+  @IsString()
+  cardioPreference?: string;
+
+  @ApiPropertyOptional({
+    type: [String],
+    description: 'Primary lifts to prioritize (squat/bench/deadlift/ohp)',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @IsIn(['squat', 'bench', 'deadlift', 'ohp'], { each: true })
+  primaryLifts?: string[];
+
+  @ApiPropertyOptional({ description: 'Endurance type: muscular/cardio/mixed' })
+  @IsOptional()
+  @IsString()
+  enduranceType?: string;
 }

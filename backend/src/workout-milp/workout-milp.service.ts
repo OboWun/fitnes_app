@@ -1,4 +1,4 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
   EXERCISES_REPOSITORY,
   WORKOUT_SESSIONS_REPOSITORY,
@@ -23,6 +23,55 @@ const THETA = 1.5;
 const FATIGUE_LIMIT = 3.0;
 const DEFAULT_PHASE = 'accumulation';
 const DIVERSITY_WINDOW = 4;
+
+const DEFAULT_SESSION_DURATION: Record<string, Record<string, number>> = {
+  beginner: { default: 45 },
+  intermediate: { strength: 60, hypertrophy: 60, glute_growth: 60, recomposition: 60, default: 45 },
+  advanced: { strength: 75, hypertrophy: 75, glute_growth: 75, recomposition: 75, default: 60 },
+};
+
+const ACTIVITY_VOLUME_SCALE: Record<string, number> = {
+  sedentary: 0.7,
+  light: 0.85,
+  moderate: 1.0,
+  active: 1.1,
+};
+
+const AGE_VOLUME_SCALE: Record<string, number> = {
+  under_25: 1.1,
+  '25_40': 1.0,
+  '40_55': 0.85,
+  over_55: 0.7,
+};
+
+const AGE_REST_MODIFIER: Record<string, number> = {
+  under_40: 1.0,
+  '40_55': 1.1,
+  over_55: 1.2,
+};
+
+function getAgeBucket(age: number | undefined): string {
+  if (!age) return '25_40';
+  if (age < 25) return 'under_25';
+  if (age <= 40) return '25_40';
+  if (age <= 55) return '40_55';
+  return 'over_55';
+}
+
+function getAgeRestBucket(age: number | undefined): string {
+  if (!age) return 'under_40';
+  if (age <= 40) return 'under_40';
+  if (age <= 55) return '40_55';
+  return 'over_55';
+}
+
+function computeBMI(weightKg: number | undefined | null, heightCm: number | undefined | null): number | null {
+  if (!weightKg || !heightCm || heightCm <= 0) return null;
+  const heightM = heightCm / 100;
+  return weightKg / (heightM * heightM);
+}
+
+const GLUTE_MUSCLES = new Set(['glutes', 'hamstrings', 'adductors', 'abductors']);
 
 type SessionType =
   | 'upper'
@@ -149,6 +198,8 @@ const SETS_GOAL_MODIFIER: Record<
   general_health: { compound: 0, isolation: 0 },
   rehab: { compound: -1, isolation: 0 },
   mobility: { compound: -1, isolation: 0 },
+  glute_growth: { compound: 1, isolation: 1 },
+  recomposition: { compound: 0, isolation: 1 },
 };
 
 const GOAL_REP_RANGES: Record<
@@ -162,6 +213,8 @@ const GOAL_REP_RANGES: Record<
   general_health: { min: 8, max: 15, default: 10 },
   rehab: { min: 12, max: 20, default: 15 },
   mobility: { min: 10, max: 20, default: 15 },
+  glute_growth: { min: 6, max: 20, default: 12 },
+  recomposition: { min: 8, max: 15, default: 12 },
 };
 
 const GOAL_CONFIG: Record<
@@ -193,14 +246,14 @@ const GOAL_CONFIG: Record<
     restSec: 45,
     preferCompound: false,
     exerciseTypeBonus: ['endurance', 'cardio'],
-    exerciseTypePenalty: ['strength', 'plyometric'],
+    exerciseTypePenalty: ['plyometric'],
   },
   weight_loss: {
     setsMultiplier: 1.25,
-    restSec: 60,
+    restSec: 45,
     preferCompound: true,
     exerciseTypeBonus: ['cardio', 'endurance'],
-    exerciseTypePenalty: ['strength', 'plyometric'],
+    exerciseTypePenalty: [],
   },
   general_health: {
     setsMultiplier: 1.0,
@@ -222,6 +275,20 @@ const GOAL_CONFIG: Record<
     preferCompound: false,
     exerciseTypeBonus: ['mobility', 'stretching', 'stability'],
     exerciseTypePenalty: ['plyometric', 'strength'],
+  },
+  glute_growth: {
+    setsMultiplier: 1.3,
+    restSec: 90,
+    preferCompound: true,
+    exerciseTypeBonus: ['hypertrophy', 'strength'],
+    exerciseTypePenalty: ['stretching', 'cardio'],
+  },
+  recomposition: {
+    setsMultiplier: 1.25,
+    restSec: 60,
+    preferCompound: true,
+    exerciseTypeBonus: ['hypertrophy', 'strength', 'endurance'],
+    exerciseTypePenalty: ['stretching', 'mobility'],
   },
 };
 
@@ -376,7 +443,7 @@ const FOCUS_GROUP_MIN_EXERCISES: Record<string, number> = {
 
 export interface WorkoutMILPInput {
   userId: string;
-  sessionDurationMin: number;
+  sessionDurationMin: number | null;
   experienceLevel?: string;
   goal?: string;
   focusMuscles?: string[];
@@ -394,6 +461,13 @@ export interface WorkoutMILPInput {
   userContraindications?: string[];
   gender?: string;
   weeklyVolumeByMuscle?: Record<string, number>;
+  activityLevel?: string;
+  cardioPreference?: string;
+  primaryLifts?: string[];
+  enduranceType?: string;
+  age?: number;
+  heightCm?: number;
+  weightKg?: number;
 }
 
 interface NormalizedWorkoutMILPInput {
@@ -419,6 +493,11 @@ interface NormalizedWorkoutMILPInput {
   userContraindications: string[];
   weeklyVolumeByMuscle: Record<string, number>;
   weeklyVolumeScale: number;
+  cardioPreference?: string;
+  primaryLifts?: string[];
+  enduranceType?: string;
+  age?: number;
+  bmi?: number;
 }
 
 export interface WorkoutMILPOutput {
@@ -437,6 +516,8 @@ export interface WorkoutMILPOutput {
 
 @Injectable()
 export class WorkoutMilpService {
+  private readonly logger = new Logger(WorkoutMilpService.name);
+
   constructor(
     @Inject(EXERCISES_REPOSITORY)
     private readonly exercisesRepository: IExercisesRepository,
@@ -450,6 +531,8 @@ export class WorkoutMilpService {
     const allExercises = await this.loadAllExercises();
 
     const candidates = this.filterCandidates(allExercises, normalizedInput);
+
+    this.logger.log(`MILP: ${candidates.length} candidates for ${normalizedInput.exerciseCount} exercises, goal=${normalizedInput.goal}`);
 
     const coverageCheck = this.checkCoverageFeasibility(
       candidates,
@@ -738,6 +821,87 @@ export class WorkoutMilpService {
       );
       wE *= 0.9 + 0.1 * timeUtilFactor;
 
+      // Primary lifts boost (strength goal)
+      if (input.primaryLifts?.length) {
+        const exPattern = (ex.movementPattern ?? '').toLowerCase();
+        const slugLower = ex.slug.toLowerCase();
+        const isPrimaryLift = input.primaryLifts.some((lift) => {
+          if (lift === 'squat' && (exPattern.includes('squat') || slugLower.includes('squat'))) return true;
+          if (lift === 'bench' && (exPattern.includes('bench') || slugLower.includes('bench'))) return true;
+          if (lift === 'deadlift' && (exPattern.includes('deadlift') || slugLower.includes('deadlift'))) return true;
+          if (lift === 'ohp' && (exPattern.includes('press') && !exPattern.includes('leg'))) return true;
+          return false;
+        });
+        if (isPrimaryLift) {
+          wE *= 1.5;
+        }
+      }
+
+      // Cardio preference (weight_loss / endurance)
+      if (input.cardioPreference && input.cardioPreference !== 'any') {
+        const isLocomotion = ex.movementPattern === 'locomotion';
+        if (isLocomotion) {
+          const slugLower = ex.slug.toLowerCase();
+          const matchesPreference =
+            (input.cardioPreference === 'running' && (slugLower.includes('run') || slugLower.includes('sprint') || slugLower.includes('jog'))) ||
+            (input.cardioPreference === 'cycling' && (slugLower.includes('cycl') || slugLower.includes('bike'))) ||
+            (input.cardioPreference === 'rowing' && (slugLower.includes('row'))) ||
+            (input.cardioPreference === 'jump_rope' && (slugLower.includes('jump') || slugLower.includes('skip'))) ||
+            (input.cardioPreference === 'swimming' && (slugLower.includes('swim')));
+          if (matchesPreference) {
+            wE *= 1.4;
+          } else {
+            wE *= 0.7;
+          }
+        }
+      }
+
+      // Endurance type (endurance goal)
+      if (input.enduranceType) {
+        const isLocomotion = ex.movementPattern === 'locomotion';
+        const isCardioType = (ex.exerciseType ?? '').toLowerCase() === 'cardio';
+        const exType = (ex.exerciseType ?? '').toLowerCase();
+        if (input.enduranceType === 'cardio') {
+          if (isLocomotion || isCardioType) wE *= 1.3;
+          else if (exType === 'strength') wE *= 0.7;
+        } else if (input.enduranceType === 'muscular') {
+          if (isLocomotion) wE *= 0.6;
+          if (exType === 'endurance' || exType === 'hypertrophy') wE *= 1.2;
+        }
+      }
+
+      // Glute growth goal — strong glute/hamstring bonus
+      if (input.goal === 'glute_growth') {
+        const hitsGlutes = (meta.primaryMuscleWeights ?? []).some((mw) =>
+          GLUTE_MUSCLES.has(this.normalizeSlug(mw.slug)),
+        );
+        if (hitsGlutes) {
+          wE *= input.gender === 'female' ? 1.7 : 1.5;
+        }
+      }
+
+      // Age > 50: penalize plyometric, bonus stability
+      if (input.age && input.age > 50) {
+        const exType = (ex.exerciseType ?? '').toLowerCase();
+        if (exType === 'plyometric') wE *= 0.5;
+        if (exType === 'stability' || exType === 'rehab') wE *= 1.2;
+      }
+
+      // BMI-based scoring
+      if (input.bmi) {
+        if (input.bmi > 30) {
+          const isBodyweight = (ex.equipments ?? []).length === 0 ||
+            (ex.equipments ?? []).every((eq) =>
+              ['bodyweight', 'body weight', 'none'].includes(eq.toLowerCase()));
+          if (isBodyweight) wE *= 0.7;
+        }
+        if (input.bmi < 18.5) {
+          const isHighImpact = (ex.exerciseType ?? '').toLowerCase() === 'plyometric' ||
+            (ex.movementPattern ?? '') === 'locomotion';
+          if (isHighImpact) wE *= 0.8;
+        }
+      }
+
       // Contra penalty
       if (input.userContraindications.length && ex.contraindications?.length) {
         for (const c of ex.contraindications) {
@@ -758,6 +922,16 @@ export class WorkoutMilpService {
     return weights;
   }
 
+  private resolveSessionDuration(
+    sessionDurationMin: number | null,
+    level: string,
+    goal: string,
+  ): number {
+    if (sessionDurationMin != null) return sessionDurationMin;
+    const levelDurations = DEFAULT_SESSION_DURATION[level] ?? DEFAULT_SESSION_DURATION.intermediate;
+    return levelDurations[goal] ?? levelDurations.default ?? 60;
+  }
+
   private normalizeInput(input: WorkoutMILPInput): NormalizedWorkoutMILPInput {
     const level = input.experienceLevel ?? 'intermediate';
     const goal = input.goal ?? 'general_health';
@@ -767,6 +941,12 @@ export class WorkoutMilpService {
     const repRange = GOAL_REP_RANGES[goal] ?? GOAL_REP_RANGES.general_health;
 
     const repsPerSet = repRange.default;
+
+    const sessionDurationMin = this.resolveSessionDuration(
+      input.sessionDurationMin,
+      level,
+      goal,
+    );
 
     const focusMuscles = (input.focusMuscles ?? []).map((m) =>
       this.normalizeSlug(m),
@@ -818,7 +998,7 @@ export class WorkoutMilpService {
       DEFAULT_PER_SET_TIME_SEC * avgSetsPerExercise +
       restBetweenSetsSec * Math.max(0, avgSetsPerExercise - 1);
     const maxByTime = Math.floor(
-      (input.sessionDurationMin * 60) / estTimePerExercise,
+      (sessionDurationMin * 60) / estTimePerExercise,
     );
     exerciseCount = Math.min(exerciseCount, Math.max(2, maxByTime));
 
@@ -863,14 +1043,40 @@ export class WorkoutMilpService {
       weeklyVolumeByMuscle[this.normalizeSlug(k)] = v;
     }
 
+    let weeklyVolumeScale = preset.weeklyVolumeScale;
+    if (input.activityLevel) {
+      const activityScale = ACTIVITY_VOLUME_SCALE[input.activityLevel] ?? 1.0;
+      weeklyVolumeScale *= activityScale;
+    }
+    const ageBucket = getAgeBucket(input.age);
+    weeklyVolumeScale *= AGE_VOLUME_SCALE[ageBucket] ?? 1.0;
+
+    const ageRestBucket = getAgeRestBucket(input.age);
+    const ageRestMod = AGE_REST_MODIFIER[ageRestBucket] ?? 1.0;
+    const adjustedRestSec = Math.round(restBetweenSetsSec * ageRestMod);
+
+    if (goal === 'glute_growth') {
+      if (!focusMuscles.includes('legs') && !focusMuscles.includes('glutes')) {
+        focusMuscles.push('legs');
+      }
+      if (!expandedFromFocus.includes('glutes')) expandedFromFocus.push('glutes');
+      if (!expandedFromFocus.includes('hamstrings')) expandedFromFocus.push('hamstrings');
+      if (!expandedFromFocus.includes('adductors')) expandedFromFocus.push('adductors');
+      if (gender === 'female' && !expandedFromFocus.includes('abductors')) {
+        expandedFromFocus.push('abductors');
+      }
+    }
+
+    const bmi = computeBMI(input.weightKg, input.heightCm);
+
     return {
       userId: input.userId,
-      sessionDurationMin: input.sessionDurationMin,
+      sessionDurationMin,
       exerciseCount,
       setsPerExercise,
       compoundSets,
       isolationSets,
-      restBetweenSetsSec,
+      restBetweenSetsSec: adjustedRestSec,
       repsPerSet,
       experienceLevel: level,
       goal,
@@ -885,7 +1091,12 @@ export class WorkoutMilpService {
       mandatoryMuscles: uniqueMandatory,
       userContraindications: input.userContraindications ?? [],
       weeklyVolumeByMuscle,
-      weeklyVolumeScale: preset.weeklyVolumeScale,
+      weeklyVolumeScale,
+      cardioPreference: input.cardioPreference,
+      primaryLifts: input.primaryLifts,
+      enduranceType: input.enduranceType,
+      age: input.age,
+      bmi: bmi ?? undefined,
     };
   }
 

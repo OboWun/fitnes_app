@@ -1,4 +1,4 @@
-import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { WORKOUT_SESSIONS_REPOSITORY, type WorkoutSessionsFilter } from '../common/repositories/index.js';
 import type { IWorkoutSessionsRepository } from '../common/repositories/index.js';
 import type {
@@ -14,17 +14,21 @@ import type {
 } from './dto/workout-session-response.dto.js';
 import type { CompleteSessionDto } from './dto/complete-session.dto.js';
 import { SetPlannerService } from './set-planner.service.js';
+import { TrainingPlansService } from '../training-plans/training-plans.service.js';
 
 @Injectable()
 export class WorkoutSessionsService {
+  private readonly logger = new Logger(WorkoutSessionsService.name);
+
   constructor(
     @Inject(WORKOUT_SESSIONS_REPOSITORY)
     private readonly repository: IWorkoutSessionsRepository,
+    private readonly plansService: TrainingPlansService,
     private readonly setPlanner: SetPlannerService,
   ) {}
 
-  async findByBlockId(blockId: string): Promise<WorkoutSessionResponseDto[]> {
-    const sessions = await this.repository.findByBlockId(blockId);
+  async findByPlanSessionId(planSessionId: string): Promise<WorkoutSessionResponseDto[]> {
+    const sessions = await this.repository.findByPlanSessionId(planSessionId);
     return this.toResponseDtos(sessions);
   }
 
@@ -61,7 +65,7 @@ export class WorkoutSessionsService {
     );
 
     const session = await this.repository.create({
-      blockId: dto.blockId,
+      planSessionId: dto.planSessionId,
       userId,
       dayOfWeek: dto.dayOfWeek as WorkoutSession['dayOfWeek'],
       time: dto.time,
@@ -83,7 +87,7 @@ export class WorkoutSessionsService {
     }
 
     const updateData: Partial<
-      Omit<WorkoutSession, 'id' | 'userId' | 'blockId'>
+      Omit<WorkoutSession, 'id' | 'userId' | 'planSessionId'>
     > & {
       exercises?: WorkoutSessionExercise[];
     } = {};
@@ -132,12 +136,10 @@ export class WorkoutSessionsService {
 
     await this.repository.completeSession(sessionId, dto.sets);
 
-    const nextPlanned = await this.repository.findNextPlannedByUserId(userId, sessionId);
-    if (nextPlanned) {
-      const nextSets = await this.repository.getSetsBySession(nextPlanned.id);
-      if (!nextSets.length) {
-        await this.setPlanner.planSetsForSession(nextPlanned);
-      }
+    try {
+      await this.plansService.advanceAfterComplete(userId, sessionId);
+    } catch (e) {
+      this.logger.warn(`advanceAfterComplete failed for session ${sessionId}: ${(e as Error).message}`);
     }
 
     const completed = await this.repository.findById(sessionId);
@@ -171,7 +173,7 @@ export class WorkoutSessionsService {
     const dayOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
     const currentIdx = dayOrder.indexOf(original.dayOfWeek as string);
 
-    const existingSessions = await this.repository.findByBlockId(original.blockId);
+    const existingSessions = await this.repository.findByPlanSessionId(original.planSessionId);
     const usedDays = new Set(existingSessions.map((s) => s.dayOfWeek as string));
 
     let nextDay: string | undefined;
@@ -193,11 +195,12 @@ export class WorkoutSessionsService {
     }));
 
     const rescheduled = await this.repository.create({
-      blockId: original.blockId,
+      planSessionId: original.planSessionId,
       userId: original.userId,
       dayOfWeek: nextDay as WorkoutSession['dayOfWeek'],
       time: original.time,
       status: 'planned',
+      weekNumber: original.weekNumber,
       metadata: {
         ...original.metadata,
         rescheduledFrom: original.id,
@@ -222,7 +225,7 @@ export class WorkoutSessionsService {
   ): WorkoutSessionResponseDto {
     return {
       id: session.id,
-      blockId: session.blockId,
+      planSessionId: session.planSessionId,
       userId: session.userId,
       dayOfWeek: session.dayOfWeek,
       time: session.time,

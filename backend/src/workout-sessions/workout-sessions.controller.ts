@@ -38,14 +38,14 @@ import { SkipSessionDto } from './dto/skip-session.dto.js';
 export class WorkoutSessionsController {
   constructor(private readonly service: WorkoutSessionsService) {}
 
-  @Get('block/:blockId')
-  @ApiOperation({ summary: 'Get all sessions for a training block' })
-  @ApiParam({ name: 'blockId' })
+  @Get('plan-session/:planSessionId')
+  @ApiOperation({ summary: 'Get all sessions for a training plan session' })
+  @ApiParam({ name: 'planSessionId' })
   @ApiOkResponse({ type: [WorkoutSessionResponseDto] })
-  async findByBlockId(
-    @Param('blockId') blockId: string,
+  async findByPlanSessionId(
+    @Param('planSessionId') planSessionId: string,
   ): Promise<WorkoutSessionResponseDto[]> {
-    return this.service.findByBlockId(blockId);
+    return this.service.findByPlanSessionId(planSessionId);
   }
 
   @Get()

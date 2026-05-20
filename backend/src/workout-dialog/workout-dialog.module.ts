@@ -33,5 +33,6 @@ import { EquipmentPresetsSqlRepository } from '../equipment-presets/equipment-pr
       useClass: EquipmentPresetsSqlRepository,
     },
   ],
+  exports: [WorkoutDialogService],
 })
 export class WorkoutDialogModule {}

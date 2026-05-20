@@ -1,1 +1,0 @@
- C:\\Projects\\fitnes_app\\mobile\\.dart_tool\\flutter_build\\97f233511e294166d3c7a5fee62c06a0\\native_assets.json: 

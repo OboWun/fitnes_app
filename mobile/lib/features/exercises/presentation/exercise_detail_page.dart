@@ -11,8 +11,17 @@ import 'widgets/exercise_detail_content.dart';
 
 class ExerciseDetailPage extends ConsumerWidget {
   final String slug;
+  final bool isPickerMode;
+  final bool isSelected;
+  final ValueChanged<String>? onToggleSelect;
 
-  const ExerciseDetailPage({super.key, required this.slug});
+  const ExerciseDetailPage({
+    super.key,
+    required this.slug,
+    this.isPickerMode = false,
+    this.isSelected = false,
+    this.onToggleSelect,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -34,6 +43,18 @@ class ExerciseDetailPage extends ConsumerWidget {
                   size: 20, color: AppColors.whiteColor),
               onPressed: () => context.pop(),
             ),
+            actions: [
+              if (isPickerMode)
+                TextButton(
+                  onPressed: () => context.pop(),
+                  child: Text(
+                    'Готово',
+                    style: AppTypography.mediumTextSemiBold.copyWith(
+                      color: AppColors.whiteColor,
+                    ),
+                  ),
+                ),
+            ],
             flexibleSpace: GradientFlexibleSpace(
               expandedHeight: expandedHeight,
               expandedChild: _buildExpandedChild(detailAsync),
@@ -62,9 +83,16 @@ class ExerciseDetailPage extends ConsumerWidget {
               ),
             ),
           ),
-          const SliverGap(vertical: 24),
+          if (isPickerMode) const SliverGap(vertical: 80),
+          if (!isPickerMode) const SliverGap(vertical: 24),
         ],
       ),
+      bottomNavigationBar: isPickerMode
+          ? _PickerBottomBar(
+              isSelected: isSelected,
+              onToggle: () => onToggleSelect?.call(slug),
+            )
+          : null,
     );
   }
 
@@ -116,5 +144,60 @@ class ExerciseDetailPage extends ConsumerWidget {
           child: Icon(Icons.fitness_center,
               size: 24, color: AppColors.whiteColor),
         );
+  }
+}
+
+class _PickerBottomBar extends StatelessWidget {
+  final bool isSelected;
+  final VoidCallback? onToggle;
+
+  const _PickerBottomBar({required this.isSelected, this.onToggle});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+      decoration: BoxDecoration(
+        color: AppColors.whiteColor,
+        boxShadow: AppShadows.card,
+      ),
+      child: SizedBox(
+        width: double.infinity,
+        height: 48,
+        child: InkWell(
+          onTap: onToggle,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: isSelected ? AppGradients.blueLinear : null,
+              color: isSelected ? null : AppColors.gray3,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            alignment: Alignment.center,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  isSelected ? Icons.check_circle : Icons.add,
+                  color: isSelected
+                      ? AppColors.whiteColor
+                      : AppColors.gray1,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  isSelected ? 'Выбрано' : 'Выбрать',
+                  style: AppTypography.largeTextSemiBold.copyWith(
+                    color: isSelected
+                        ? AppColors.whiteColor
+                        : AppColors.gray1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

@@ -25,7 +25,7 @@ export class WeeklySessionDto {
 
 export class GenerateWeeklyPlanResponseDto {
   @ApiProperty()
-  blockId!: string;
+  planId!: string;
 
   @ApiProperty({ example: 'ppl' })
   splitName!: string;

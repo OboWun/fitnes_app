@@ -136,26 +136,32 @@ SELECT exercise_slug, sets, reps, rest_between_sets, rest_after_exercise, sort_o
 FROM workout_exercises WHERE template_id = $1 ORDER BY sort_order;
 ```
 
-### 6. Training Blocks (Read-Write)
+### 6. Training Plans (Read-Write)
 
 ```
-Client ──POST /training-blocks──▶ TrainingBlocksController
-                                      │
-                            TrainingBlocksService
-                                      │
-                         TrainingBlocksSqlRepository
-                                      │
-                        ──INSERT INTO training_blocks──▶ PostgreSQL
+Client ──POST /training-plans──▶ TrainingPlansController
+                                       │
+                             TrainingPlansService
+                                       │
+                          TrainingPlansSqlRepository
+                                       │
+                         ──INSERT INTO training_plans──▶ PostgreSQL
+                         ──INSERT INTO training_plan_schedule──▶ PostgreSQL
+                         ──INSERT INTO training_plan_sessions──▶ PostgreSQL
 ```
 
-- CRUD блоков периодизации: `base | build | taper | recovery`
-- Метаданные (splitName, phase, goal, gender, weeklyLoadLimit) хранятся в `metadata` JSONB
-- Блоки создаются автоматически при генерации weekly plan
+- CRUD планов: каждый план содержит расписание `TrainingPlanScheduleItem[]`
+- Расписание хранится в `training_plan_schedule` — при обновлении удаляются и вставляются заново
+- Activate: deactivate others → create TrainingPlanSession → create first WorkoutSession → SetPlanner
+- Archive: deactivate plan → archive active session
+- `source`: `'manual'` или `'milp'`
+- MILP weekly-plan создаёт TrainingPlan напрямую (source='milp')
 
 ```sql
-SELECT ... FROM training_blocks WHERE user_id = $1 ORDER BY index;
-INSERT INTO training_blocks (id, user_id, name, type, index, duration_weeks, goal, target_muscles, metadata)
-VALUES (...) RETURNING ...;
+SELECT ... FROM training_plans WHERE user_id = $1 ORDER BY created_at DESC;
+SELECT plan_id, day_of_week, workout_template_id, time, name, sort_order
+  FROM training_plan_schedule WHERE plan_id = $1 ORDER BY sort_order;
+SELECT ... FROM training_plan_sessions WHERE plan_id = $1 AND status = 'active';
 ```
 
 ### 7. Workout Sessions (Read-Write)
@@ -171,10 +177,10 @@ Client ──GET /workout-sessions──▶ WorkoutSessionsController
                     ──SELECT ... FROM workout_session_exercises──▶ PostgreSQL
 ```
 
-- CRUD сессий внутри блоков: привязаны к `training_block` через `block_id`
+- CRUD сессий внутри планов: привязаны к `training_plan_session` через `plan_session_id`
 - Упражнения сессии хранятся в `workout_session_exercises` — при обновлении удаляются и вставляются заново
 - `findRecentCompletedByUserId()` — последние завершённые сессии (без фильтра по дате, `created_at` отсутствует)
-- `GET /workout-sessions` — все сессии пользователя; `GET /workout-sessions/block/:blockId` — сессии блока
+- `findByPlanSessionId()` — сессии конкретной plan session
 
 ```sql
 SELECT ... FROM workout_sessions WHERE user_id = $1 ORDER BY day_of_week;
@@ -225,30 +231,47 @@ Client ──POST /workout-milp/generate──▶ WorkoutMilpController
 ```
 Client ──POST /workout-milp/weekly-plan──▶ WorkoutMilpController
                                                 │
-                                      1. Load user (gender)
-                                                │
-                                      WeeklyProcessMilpService.generateWeeklyPlan()
-                                                │
-                                      2. selectSplit(count, level, goal) → SplitStrategy
-                                         - SPLIT_STRATEGIES matrix
-                                         - Goal modifiers (rehab→Full Body)
-                                                │
-                                      3. assignDays(availableDays, sessionCount)
-                                         - Best-spaced subset or evenly spaced
-                                                │
-                                      4. computeWeeklyVolumeBudget(level)
-                                         - MUSCLE_WEEKLY_VOLUME_TARGETS × weeklyVolumeScale
-                                                │
-                                      For each session:
-                                        5. deriveSessionParams() — focus muscles, exercise count
-                                           from SESSION_MUSCLE_FOCUS + volume budget
-                                        6. Call workoutMilpService.generateWorkout()
-                                           with per-session focus + accumulated volume
-                                        7. Update accumulatedVolume, fatigueByMuscle, usedExercises
-                                                │
-                                      8. Save TrainingBlock + WorkoutSessions to DB
-                                                │
-                                       ◀── WeeklyProcessOutput
+                                       1. Load user (gender, age, height, weight)
+                                                 │
+                                       WeeklyProcessMilpService.generateWeeklyPlan()
+                                                 │
+                                       2. selectSplit(count, level, goal) → SplitStrategy
+                                          - SPLIT_STRATEGIES matrix
+                                          - Goal modifiers (rehab→Full Body)
+                                          - SplitType override if specified
+                                                 │
+                                       3. assignDays(availableDays, sessionCount)
+                                          - Best-spaced subset or evenly spaced
+                                                 │
+                                       4. computeWeeklyVolumeBudget(level, age, activity)
+                                          - MUSCLE_WEEKLY_VOLUME_TARGETS × weeklyVolumeScale × age × activity
+                                                 │
+                                        For each session:
+                                          5. deriveSessionParams() — focus muscles, exercise count
+                                             from SESSION_MUSCLE_FOCUS + volume budget
+                                             (glute_growth: force legs focus)
+                                          6. Call workoutMilpService.generateWorkout()
+                                             with per-session focus + accumulated volume
+                                          7. Update accumulatedVolume, fatigueByMuscle, usedExercises
+                                                  │
+                                        8. Create WorkoutTemplate per day (with exercises)
+                                        9. Create TrainingPlan (isActive: false, source: milp)
+                                           + training_plan_schedule (day → templateId)
+                                                  │
+                                         ◀── WeeklyProcessOutput (planId)
+
+Client ──POST /training-plans/:id/activate──▶ TrainingPlansController
+                                                    │
+                                          TrainingPlansService.activate()
+                                                    │
+                                          1. Deactivate other plans
+                                          2. Activate plan (isActive: true)
+                                          3. Create TrainingPlanSession (4 weeks)
+                                          4. Read exercises from WorkoutTemplate (first day)
+                                          5. Create WorkoutSession with exercises
+                                          6. SetPlanner for first session
+                                                    │
+                                             ◀── TrainingPlanResponseDto
 ```
 
 ### 10. Workout Dialog — диалоговый сбор параметров
@@ -323,23 +346,25 @@ ORDER BY created_at DESC;
 
 ```
 Client ──GET /home/data──▶ HomeController
-                                │
-                      HomeDataService.getHomeData()
-                                │
-                    ┌── TrainingBlocksSqlRepository.findByUserId()
-                    └── WorkoutSessionsSqlRepository.findByBlockId()
-                                │
-                      ◀── HomeDataResponseDto
+                                 │
+                       HomeDataService.getHomeData()
+                                 │
+                     ┌── TrainingPlansRepository.findActiveByUserId()
+                     ├── TrainingPlansRepository.findActivePlanSession()
+                     └── WorkoutSessionsRepository.findByPlanSessionId()
+                                 │
+                       ◀── HomeDataResponseDto
 ```
 
-- `HomeModule` самопробрасывает `TrainingBlocksSqlRepository` и `WorkoutSessionsSqlRepository`
+- `HomeModule` самопробрасывает `TrainingPlansRepository` и `WorkoutSessionsRepository`
 - Логика:
-  1. Загрузить все `TrainingBlock` → взять последний по `index` как `activeBlock`
-  2. Если блок найден → загрузить `WorkoutSession[]` по `blockId`
-  3. Отфильтровать сессии по неделе (вычисление даты из `dayOfWeek` + `weekStart`)
-  4. `todaySession` — сессия на сегодняшний день недели
-  5. `currentWeek` — вычисляется из ID блока (декодирование `Date.now()` из base36)
-  6. `description` — маппинг `sessionType` → русское описание
+  1. Загрузить активный `TrainingPlan` → `findActiveByUserId`
+  2. Загрузить активную `TrainingPlanSession` → `findActivePlanSession`
+  3. Загрузить `WorkoutSession[]` по `planSessionId` → `findByPlanSessionId`
+  4. Отфильтровать сессии по неделе (вычисление даты из `dayOfWeek` + `weekStart`)
+  5. `todaySession` — сессия на сегодняшний день недели
+  6. `currentWeek` — из `TrainingPlanSession.currentWeek`
+  7. `description` — маппинг `sessionType` → русское описание
 
 ### 13. Session Complete + Set Planning
 
@@ -400,6 +425,79 @@ SELECT actual_weight_kg, actual_reps, actual_rpe FROM workout_session_sets s
 - Запускается ежедневно в полночь через `@nestjs/schedule`
 - Сессии с `status = 'planned'` и прошедшим `day_of_week` → auto-skipped
 - `metadata.autoSkipped = true` отличает auto-skip от ручного
+
+### 15. Chat (AI Trainer + Workout Creation)
+
+```
+Client ──POST /chat/sessions──▶ ChatController
+                                      │
+                            ChatService.createSession()
+                                      │
+                            ┌── mode=chat → create session only
+                            └── mode=workout → create session
+                                  + WorkoutDialogService.startDialog()
+                                  + save first step as assistant message
+                                      │
+                               ◀── ChatSession
+```
+
+```
+Client ──POST /chat/sessions/:id/messages──▶ ChatController
+                                                   │
+                                         ChatService.sendMessage()
+                                                   │
+                                   1. Save user message (role=user)
+                                                   │
+                                   ┌── mode=chat:
+                                   │   MockLLMProvider.generateResponse()
+                                   │   - keyword matching against FITNESS_KNOWLEDGE
+                                   │   - userContext from profile (goal, level)
+                                   │   Save assistant message
+                                                   │
+                                    └── mode=workout:
+                                        WorkoutDialogService.answerStep(dialogId, content)
+                                        - single_choice validation: invalid → repeat question
+                                        - try/catch: errors logged, user gets friendly message
+                                        Save assistant message with dialog metadata
+                                        If dialog complete → return workoutResult params
+                                                    │
+                                         ◀── SendMessageResponse (includes mode directly)
+```
+
+```
+Client ──PATCH /chat/sessions/:id/mode──▶ ChatController
+                                                 │
+                                       ChatService.switchMode()
+                                                 │
+                                       ┌── to workout → start new dialog
+                                       │   + save system message (mode switched)
+                                       │   + save first dialog step as assistant
+                                       │
+                                       └── to chat → clear dialog link
+                                                 │
+                                        ◀── ChatSession
+```
+
+**SQL для чата:**
+```sql
+-- Sessions:
+SELECT id, user_id, mode, dialog_id, title, created_at, updated_at
+  FROM chat_sessions WHERE user_id = $1 ORDER BY created_at DESC;
+INSERT INTO chat_sessions (id, user_id, mode, title) VALUES ($1,$2,$3,$4) RETURNING ...;
+UPDATE chat_sessions SET mode=$2, dialog_id=$3, title=$4, updated_at=NOW() WHERE id=$1 RETURNING ...;
+DELETE FROM chat_sessions WHERE id = $1;
+
+-- Messages:
+SELECT id, session_id, role, content, metadata, created_at
+  FROM chat_messages WHERE session_id = $1 ORDER BY created_at ASC;
+INSERT INTO chat_messages (id, session_id, role, content, metadata) VALUES ($1,$2,$3,$4,$5) RETURNING ...;
+```
+
+- Chat module imports `WorkoutDialogModule` (which exports `WorkoutDialogService`)
+- `MockLLMProvider` implements `ILLMProvider` interface — keyword matching against ~22 fitness topics
+- `ILLMProvider` is a Symbol-injected provider (`LLM_PROVIDER`) — easy to swap for real LLM later
+- Full message history stored in `chat_messages` — no truncation
+- Dialog steps in workout mode stored as messages with `metadata: { type: 'dialog_step', step, options, ... }`
 
 ---
 

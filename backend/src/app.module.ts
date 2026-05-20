@@ -10,12 +10,13 @@ import { ContraindicationsModule } from './contraindications/contraindications.m
 import { UsersModule } from './users/users.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { WorkoutTemplatesModule } from './workout-templates/workout-templates.module.js';
-import { TrainingBlocksModule } from './training-blocks/training-blocks.module.js';
+import { TrainingPlansModule } from './training-plans/training-plans.module.js';
 import { WorkoutSessionsModule } from './workout-sessions/workout-sessions.module.js';
 import { WorkoutMilpModule } from './workout-milp/workout-milp.module.js';
 import { WorkoutDialogModule } from './workout-dialog/workout-dialog.module.js';
 import { EquipmentPresetsModule } from './equipment-presets/equipment-presets.module.js';
 import { HomeModule } from './home/home.module.js';
+import { ChatModule } from './chat/chat.module.js';
 
 @Module({
   imports: [
@@ -28,12 +29,13 @@ import { HomeModule } from './home/home.module.js';
     UsersModule,
     AuthModule,
     WorkoutTemplatesModule,
-    TrainingBlocksModule,
+    TrainingPlansModule,
     WorkoutSessionsModule,
     WorkoutMilpModule,
     WorkoutDialogModule,
     EquipmentPresetsModule,
     HomeModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],

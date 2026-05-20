@@ -87,10 +87,12 @@ backend/
 │   │   ├── workout-templates-sql.repository.ts
 │   │   └── dto/
 │   │
-│   ├── training-blocks/        # Недельные блоки периодизации
-│   │   ├── training-blocks.module.ts
-│   │   ├── training-blocks-sql.repository.ts
-│   │   └── ...
+│   ├── training-plans/         # Training Plans (replaced TrainingBlocks)
+│   │   ├── training-plans.module.ts
+│   │   ├── training-plans.controller.ts   # CRUD + activate + archive + assign/unassign + replace
+│   │   ├── training-plans.service.ts      # activate(), archive(), assignTemplate(), replaceWorkout()
+│   │   ├── training-plans-sql.repository.ts
+│   │   └── dto/
 │   │
 │   ├── workout-sessions/       # Тренировочные сессии внутри блоков
 │   │   ├── workout-sessions.module.ts
@@ -115,6 +117,19 @@ backend/
 │       ├── workout-dialogs-sql.repository.ts
 │       └── dto/
 │
+│   ├── chat/                    # Unified chat (AI trainer + workout creation)
+│   │   ├── chat.module.ts
+│   │   ├── chat.controller.ts              # 6 endpoints (sessions, messages, mode switch)
+│   │   ├── chat.service.ts                 # Routing by mode (chat → MockLLM, workout → DialogService)
+│   │   ├── chat-sessions-sql.repository.ts
+│   │   ├── chat-messages-sql.repository.ts
+│   │   ├── llm/
+│   │   │   ├── llm-provider.interface.ts   # ILLMProvider + LLM_PROVIDER Symbol
+│   │   │   └── mock-llm.provider.ts        # Keyword-matching MockLLM
+│   │   ├── knowledge/
+│   │   │   └── fitness-knowledge.ts        # ~22 fitness articles for MockLLM
+│   │   └── dto/
+│
 │   └── home/                    # Главная страница мобильного приложения
 │       ├── home.module.ts
 │       ├── home.controller.ts   # GET /home/data
@@ -134,15 +149,20 @@ backend/
 4. **Device Auth** — аутентификация по `deviceId`, JWT на 30 дней
 5. **MILP Optimization** — `javascript-lp-solver` для выбора упражнений, жадный fallback при неудаче
 6. **Session-aware scoring** — веса упражнений зависят от типа сессии (push/pull/legs/upper/lower/full_body)
-7. **Gender-aware selection** — мягкие бонусы (×1.2–×1.3) в зависимости от пола
+7. **Gender-aware selection** — мягкие бонусы (×1.2–×1.7) в зависимости от пола и цели
 8. **Weekly volume tracking** — отслеживание накопленного объёма по мышцам за неделю
 9. **Variable sets** — compound упражнения получают больше подходов чем isolation
-10. **Dialog state machine** — пошаговый сбор параметров с skip-логикой
-11. **Self-providing repos** — `WorkoutMilpModule`, `WorkoutDialogModule`, `EquipmentPresetsModule` не импортируют чужие модули, а самостоятельно регистрируют чужие `*SqlRepository` классы как свои провайдеры
+10. **Dialog state machine** — 16-шаговый сбор параметров с conditional routing и advanced settings gate
+11. **Self-providing repos** — `WorkoutMilpModule`, `WorkoutDialogModule`, `EquipmentPresetsModule`, `HomeModule` не импортируют чужие модули, а самостоятельно регистрируют чужие `*SqlRepository` классы как свои провайдеры
 12. **Metrics endpoint** — `POST /workout-milp/metrics` вычисляет метрики (тоннаж, калории, fatigue index) для произвольного набора упражнений
-13. **Set Planner** — `SetPlannerService` generates per-set planned data (warmup + working weights) based on exercise history, e1RM estimation, RPE-based progression
+13. **Set Planner** — `SetPlannerService` generates per-set planned data (warmup + working weights) based on exercise history, e1RM estimation, RPE-based progression, BMI-based defaults
 14. **Auto-skip cron** — `@nestjs/schedule` cron job at midnight auto-skips stale planned sessions
-15. **Self-providing repos** (extended) — `WorkoutSessionsModule` now also self-provides `ExercisesSqlRepository` and `UsersSqlRepository` for SetPlanner
+15. **Training Plan system** — TrainingPlan → TrainingPlanSession → WorkoutSession hierarchy with activate/archive lifecycle
+16. **9 training goals** — strength, hypertrophy, endurance, weight_loss, general_health, rehab, mobility, glute_growth, recomposition
+17. **Age & BMI personalization** — AGE_VOLUME_SCALE, AGE_REST_MODIFIER, BMI-based exercise scoring and default weights
+18. **Chat + Workout in one UI** — unified chat with two modes (chat/workout), ILLMProvider interface for LLM swap
+19. **Template-first MILP** — weekly MILP creates WorkoutTemplates + schedule, not WorkoutSessions; activate creates sessions from templates
+20. **Active plan editing** — update() works for active plans; schedule changes recreate planned sessions
 
 ## Module Dependencies
 
@@ -158,11 +178,12 @@ AppModule
 ├── ContraindicationsModule
 ├── EquipmentPresetsModule (самопробрасывает EquipmentsSqlRepository)
 ├── WorkoutTemplatesModule
-├── TrainingBlocksModule
+├── TrainingPlansModule (replaced TrainingBlocksModule)
 ├── WorkoutSessionsModule (самопробрасывает ExercisesSqlRepository + UsersSqlRepository для SetPlanner, ScheduleModule.forRoot)
 ├── WorkoutMilpModule (самопробрасывает 6 чужих SqlRepository)
-├── WorkoutDialogModule (самопробрасывает 3 чужих SqlRepository)
-├── HomeModule (самопробрасывает TrainingBlocksSqlRepository + WorkoutSessionsSqlRepository)
+├── WorkoutDialogModule (самопробрасывает 4 чужих SqlRepository, exports WorkoutDialogService)
+├── ChatModule (imports WorkoutDialogModule, самопробрасывает UsersSqlRepository)
+├── HomeModule (самопробрасывает TrainingPlansRepository + WorkoutSessionsRepository)
 ```
 
 ## Config

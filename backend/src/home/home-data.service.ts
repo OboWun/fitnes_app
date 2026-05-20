@@ -1,8 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
-  TRAINING_BLOCKS_REPOSITORY,
+  TRAINING_PLANS_REPOSITORY,
   WORKOUT_SESSIONS_REPOSITORY,
-  type ITrainingBlocksRepository,
+  type ITrainingPlansRepository,
   type IWorkoutSessionsRepository,
 } from '../common/repositories/index.js';
 import type {
@@ -49,14 +49,19 @@ function addDays(d: Date, days: number): Date {
 }
 
 function toISODate(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 @Injectable()
 export class HomeDataService {
+  private readonly logger = new Logger(HomeDataService.name);
+
   constructor(
-    @Inject(TRAINING_BLOCKS_REPOSITORY)
-    private readonly blocksRepo: ITrainingBlocksRepository,
+    @Inject(TRAINING_PLANS_REPOSITORY)
+    private readonly plansRepo: ITrainingPlansRepository,
     @Inject(WORKOUT_SESSIONS_REPOSITORY)
     private readonly sessionsRepo: IWorkoutSessionsRepository,
   ) {}
@@ -70,10 +75,10 @@ export class HomeDataService {
       : getMonday(new Date());
     const weekEndDate = addDays(weekStartDate, 6);
 
-    const blocks = await this.blocksRepo.findByUserId(userId);
-    const activeBlock = blocks.length > 0 ? blocks[blocks.length - 1] : null;
+    const activePlan = await this.plansRepo.findActiveByUserId(userId);
 
-    if (!activeBlock) {
+    if (!activePlan) {
+      this.logger.log(`No active plan for user ${userId}`);
       return {
         activeBlock: null,
         weekSessions: [],
@@ -83,34 +88,47 @@ export class HomeDataService {
       };
     }
 
-    const allSessions = await this.sessionsRepo.findByBlockId(activeBlock.id);
-    const weekSessions = allSessions.filter((s) => {
-      const dayIdx = DAY_ORDER[s.dayOfWeek] ?? 0;
-      const sessionDate = addDays(weekStartDate, dayIdx);
-      return sessionDate >= weekStartDate && sessionDate <= weekEndDate;
-    });
+    const planSession = await this.plansRepo.findActivePlanSession(userId);
+
+    if (!planSession) {
+      this.logger.warn(`Active plan ${activePlan.id} found but no active plan session for user ${userId}`);
+    }
+
+    const allSessions = planSession
+      ? await this.sessionsRepo.findByPlanSessionId(planSession.id)
+      : [];
+
+    const currentWeek = planSession?.currentWeek ?? 1;
+    const thisMonday = getMonday(new Date());
+    const weekDiff = Math.round(
+      (weekStartDate.getTime() - thisMonday.getTime()) / (7 * 24 * 60 * 60 * 1000),
+    );
+    const targetWeek = currentWeek + weekDiff;
+    const weekSessions = allSessions.filter((s) => (s.weekNumber ?? 1) === targetWeek);
+
+    this.logger.log(`Home data for user ${userId}: plan=${activePlan.id}, planSession=${planSession?.id ?? 'none'}, allSessions=${allSessions.length}, weekSessions=${weekSessions.length}`);
 
     const todayDayName = DAY_NAMES[new Date().getDay() === 0 ? 6 : new Date().getDay() - 1];
-    const todaySessionEntity = weekSessions.find(
-      (s) => s.dayOfWeek === todayDayName,
-    );
-
-    const currentWeek = this.computeCurrentWeek(activeBlock.id);
+    const todaySessionEntity = weekDiff === 0
+      ? weekSessions.find(
+          (s) => s.dayOfWeek === todayDayName && s.status === 'planned',
+        )
+      : undefined;
 
     const activeBlockDto: ActiveBlockDto = {
-      id: activeBlock.id,
-      name: activeBlock.name,
-      type: activeBlock.type,
-      durationWeeks: activeBlock.durationWeeks,
-      goal: activeBlock.goal,
-      splitName: activeBlock.metadata?.splitName,
-      currentWeek,
+      id: activePlan.id,
+      name: activePlan.name,
+      type: activePlan.source ?? 'manual',
+      durationWeeks: 4,
+      goal: undefined,
+      splitName: undefined,
+      currentWeek: planSession?.currentWeek ?? 1,
     };
 
     const mappedSessions: WeekSessionDto[] = weekSessions.map((s) => {
       const dayIdx = DAY_ORDER[s.dayOfWeek] ?? 0;
       const sessionDate = addDays(weekStartDate, dayIdx);
-      const sessionType = s.metadata?.sessionType;
+      const sessionType = s.metadata?.sessionType as string | undefined;
       return {
         id: s.id,
         dayOfWeek: s.dayOfWeek,
@@ -127,7 +145,7 @@ export class HomeDataService {
 
     let todaySession: TodaySessionDto | null = null;
     if (todaySessionEntity) {
-      const st = todaySessionEntity.metadata?.sessionType;
+      const st = todaySessionEntity.metadata?.sessionType as string | undefined;
       todaySession = {
         id: todaySessionEntity.id,
         sessionType: st,
@@ -146,12 +164,5 @@ export class HomeDataService {
       weekEnd: toISODate(weekEndDate),
       todaySession,
     };
-  }
-
-  private computeCurrentWeek(blockId: string): number {
-    const createdMs = parseInt(blockId.slice(0, 7), 36);
-    const now = Date.now();
-    const diffDays = Math.floor((now - createdMs) / (1000 * 60 * 60 * 24));
-    return Math.floor(diffDays / 7) + 1;
   }
 }

@@ -17,8 +17,16 @@ import '../../features/onboarding/presentation/onboarding_page.dart';
 import '../../features/profile/domain/equipment_preset.dart';
 import '../../features/profile/presentation/profile_page.dart';
 import '../../features/splash/splash_page.dart';
-import '../../features/workouts/presentation/workout_detail_page.dart';
+import '../../features/workout_dialog/public.dart';
+import '../../features/workout_templates/domain/workout_template.dart';
+import '../../features/workout_templates/presentation/create_template_page.dart';
+import '../../features/workout_templates/presentation/template_detail_page.dart';
 import '../../features/workouts/presentation/workouts_page.dart';
+import '../../features/training_plans/domain/training_plan.dart';
+import '../../features/training_plans/presentation/create_plan_page.dart';
+import '../../features/training_plans/presentation/plan_detail_page.dart';
+import '../../features/workout_sessions/presentation/active_workout_page.dart';
+import '../../features/workout_sessions/presentation/workout_history_page.dart';
 
 part 'app_router.g.dart';
 
@@ -78,9 +86,51 @@ GoRouter appRouter(AppRouterRef ref) {
         builder: (context, state) => const WorkoutsPage(),
       ),
       GoRoute(
+        path: '/workout-dialog',
+        builder: (context, state) => const WorkoutDialogPage(),
+      ),
+      GoRoute(
+        path: '/workouts/new',
+        builder: (context, state) => const CreateTemplatePage(),
+      ),
+      GoRoute(
+        path: '/workouts/:id/edit',
+        builder: (context, state) {
+          final template = state.extra as WorkoutTemplate?;
+          return CreateTemplatePage(existing: template);
+        },
+      ),
+      GoRoute(
         path: '/workouts/:id',
-        builder: (context, state) => WorkoutDetailPage(
-          workoutId: state.pathParameters['id'] ?? '',
+        builder: (context, state) => TemplateDetailPage(
+          templateId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/training-plans/new',
+        builder: (context, state) => const CreatePlanPage(),
+      ),
+      GoRoute(
+        path: '/workout-session/:id',
+        builder: (context, state) => ActiveWorkoutPage(
+          sessionId: state.pathParameters['id'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/workout-history',
+        builder: (context, state) => const WorkoutHistoryPage(),
+      ),
+      GoRoute(
+        path: '/training-plans/:id/edit',
+        builder: (context, state) {
+          final plan = state.extra as TrainingPlan?;
+          return CreatePlanPage(existing: plan);
+        },
+      ),
+      GoRoute(
+        path: '/training-plans/:id',
+        builder: (context, state) => PlanDetailPage(
+          planId: state.pathParameters['id'] ?? '',
         ),
       ),
       GoRoute(
@@ -89,6 +139,13 @@ GoRouter appRouter(AppRouterRef ref) {
           equipment: state.uri.queryParameters['equipment'],
           search: state.uri.queryParameters['search'],
           muscles: state.uri.queryParameters['muscles'],
+        ),
+      ),
+      GoRoute(
+        path: '/exercises-picker',
+        builder: (context, state) => ExercisesPage(
+          isPickerMode: true,
+          initialSelection: state.extra as Set<String>? ?? {},
         ),
       ),
       GoRoute(

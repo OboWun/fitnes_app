@@ -80,7 +80,7 @@ export class WorkoutMilpController {
 
     const input = {
       userId: user.id,
-      sessionDurationMin: dto.sessionDurationMin,
+      sessionDurationMin: dto.sessionDurationMin ?? null,
       experienceLevel: dto.experienceLevel,
       goal: dto.goal,
       focusMuscles: dto.focusMuscles,
@@ -92,6 +92,13 @@ export class WorkoutMilpController {
       userContraindications: fullUser?.contraindications ?? [],
       gender: fullUser?.gender,
       weeklyVolumeByMuscle,
+      activityLevel: dto.activityLevel,
+      cardioPreference: dto.cardioPreference,
+      primaryLifts: dto.primaryLifts,
+      enduranceType: dto.enduranceType,
+      age: fullUser?.age,
+      heightCm: fullUser?.height,
+      weightKg: fullUser?.weight,
     };
 
     const result = await this.milpService.generateWorkout(input);
@@ -105,7 +112,7 @@ export class WorkoutMilpController {
         order: e.order,
       })),
       metadata: {
-        sessionDurationMin: dto.sessionDurationMin,
+        sessionDurationMin: dto.sessionDurationMin ?? undefined,
         phase: dto.phase,
       },
     });
@@ -164,19 +171,28 @@ export class WorkoutMilpController {
 
     const result = await this.weeklyService.generateWeeklyPlan({
       userId: user.id,
-      availableDays: dto.availableDays as DayOfWeek[],
-      trainingCountPerWeek: dto.trainingCountPerWeek,
-      sessionDurationMin: dto.sessionDurationMin,
+      availableDays: dto.availableDays?.length ? (dto.availableDays as DayOfWeek[]) : null,
+      trainingCountPerWeek: dto.trainingCountPerWeek ?? null,
+      sessionDurationMin: dto.sessionDurationMin ?? null,
       experienceLevel: dto.experienceLevel ?? 'intermediate',
       goal: dto.goal ?? 'general_health',
       gender: fullUser?.gender ?? 'male',
       availableEquipment,
       phase: dto.phase,
       userContraindications: fullUser?.contraindications ?? [],
+      splitType: dto.splitType,
+      activityLevel: dto.activityLevel,
+      cardioPreference: dto.cardioPreference,
+      primaryLifts: dto.primaryLifts,
+      enduranceType: dto.enduranceType,
+      targetWeightKg: dto.targetWeightKg,
+      age: fullUser?.age,
+      heightCm: fullUser?.height,
+      weightKg: fullUser?.weight,
     });
 
     return {
-      blockId: result.blockId,
+      planId: result.planId,
       splitName: result.splitName,
       sessions: result.sessions.map((s) => ({
         dayOfWeek: s.dayOfWeek,

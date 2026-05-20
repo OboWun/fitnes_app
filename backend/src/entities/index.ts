@@ -15,9 +15,10 @@ export type {
   DayOfWeek,
 } from './workout-template.entity.js';
 export type {
-  TrainingBlock,
-  TrainingBlockMetadata,
-} from './training-block.entity.js';
+  TrainingPlan,
+  TrainingPlanScheduleItem,
+} from './training-plan.entity.js';
+export type { TrainingPlanSession } from './training-plan-session.entity.js';
 export type {
   WorkoutSession,
   WorkoutSessionMetadata,
@@ -25,6 +26,8 @@ export type {
   WorkoutSessionExerciseMetadata,
 } from './workout-session.entity.js';
 export type { WorkoutDialog } from './workout-dialog.entity.js';
+export type { ChatSession } from './chat-session.entity.js';
+export type { ChatMessage } from './chat-message.entity.js';
 export type { EquipmentPreset } from './equipment-preset.entity.js';
 export type { WeightLog } from './weight-log.entity.js';
 export type {

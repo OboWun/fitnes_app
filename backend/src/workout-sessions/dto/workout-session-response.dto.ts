@@ -27,7 +27,7 @@ export class WorkoutSessionResponseDto {
   id!: string;
 
   @ApiProperty()
-  blockId!: string;
+  planSessionId!: string;
 
   @ApiProperty()
   userId!: string;

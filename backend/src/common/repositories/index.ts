@@ -33,9 +33,9 @@ export {
   type IScheduledWorkoutsRepository,
 } from './workout-templates.repository.interface.js';
 export {
-  TRAINING_BLOCKS_REPOSITORY,
-  type ITrainingBlocksRepository,
-} from './training-blocks.repository.interface.js';
+  TRAINING_PLANS_REPOSITORY,
+  type ITrainingPlansRepository,
+} from './training-plans.repository.interface.js';
 export {
   WORKOUT_SESSIONS_REPOSITORY,
   type IWorkoutSessionsRepository,
@@ -49,3 +49,11 @@ export {
   EQUIPMENT_PRESETS_REPOSITORY,
   type IEquipmentPresetsRepository,
 } from './equipment-presets.repository.interface.js';
+export {
+  CHAT_SESSIONS_REPOSITORY,
+  type IChatSessionsRepository,
+} from './chat-sessions.repository.interface.js';
+export {
+  CHAT_MESSAGES_REPOSITORY,
+  type IChatMessagesRepository,
+} from './chat-messages.repository.interface.js';

@@ -424,10 +424,16 @@ const PHASE_LEVEL: Record<string, number> = {
   general_preparation: 1,
 };
 
-const SEVERITY_MAP: Record<string, number> = {
+const CONTRA_TIER_MULTIPLIER: Record<string, number> = {
   forbidden: 0.0,
-  not_recommended: 0.5,
-  low_weight: 0.8,
+  not_recommended: 0.1,
+  low_weight: 0.25,
+};
+
+const CONTRA_TIER_ORDER: Record<string, number> = {
+  low_weight: 1,
+  not_recommended: 2,
+  forbidden: 3,
 };
 
 const DEFAULT_PER_SET_TIME_SEC = 40;
@@ -506,6 +512,8 @@ export interface WorkoutMILPOutput {
     sets: number;
     repsPerSet: number;
     order: number;
+    restBetweenSetsSec?: number;
+    restAfterExerciseSec?: number;
   }[];
   totalLoadByMuscle: Record<string, number>;
   totalTimeSec: number;
@@ -636,6 +644,25 @@ export class WorkoutMilpService {
 
       return true;
     });
+  }
+
+  private getWorstContraTier(
+    ex: ExerciseMILPData,
+    userContraindications: string[],
+  ): string | null {
+    if (!userContraindications.length || !ex.contraindications?.length) return null;
+    let worstTier = 0;
+    let worstSeverity: string | null = null;
+    for (const c of ex.contraindications) {
+      if (userContraindications.includes(c.slug)) {
+        const tier = CONTRA_TIER_ORDER[c.severity] ?? 0;
+        if (tier > worstTier) {
+          worstTier = tier;
+          worstSeverity = c.severity;
+        }
+      }
+    }
+    return worstSeverity;
   }
 
   private calculateWeights(
@@ -902,19 +929,15 @@ export class WorkoutMilpService {
         }
       }
 
-      // Contra penalty
-      if (input.userContraindications.length && ex.contraindications?.length) {
-        for (const c of ex.contraindications) {
-          if (
-            input.userContraindications.includes(c.slug) &&
-            c.severity !== 'forbidden'
-          ) {
-            wE *= SEVERITY_MAP[c.severity] ?? 1;
-          }
-        }
-      }
-
       wE -= meta.riskLevel ?? 0;
+
+      const contraTier = this.getWorstContraTier(
+        ex,
+        input.userContraindications,
+      );
+      if (contraTier) {
+        wE *= CONTRA_TIER_MULTIPLIER[contraTier] ?? 1;
+      }
 
       weights.set(ex.slug, Math.max(0.01, wE));
     }
@@ -1579,6 +1602,10 @@ export class WorkoutMilpService {
         sets,
         repsPerSet: input.repsPerSet,
         order: i + 1,
+        restBetweenSetsSec: restSec,
+        restAfterExerciseSec: isCompound
+          ? Math.round(restSec * 1.5)
+          : restSec,
       };
     });
 

@@ -3,8 +3,8 @@ import { ChatController } from './chat.controller.js';
 import { ChatService } from './chat.service.js';
 import { ChatSessionsSqlRepository } from './chat-sessions-sql.repository.js';
 import { ChatMessagesSqlRepository } from './chat-messages-sql.repository.js';
-import { MockLLMProvider } from './llm/mock-llm.provider.js';
-import { ILLMProvider, LLM_PROVIDER } from './llm/llm-provider.interface.js';
+import { RouterAILLMProvider } from './llm/routerai-llm.provider.js';
+import { LLM_PROVIDER } from './llm/llm-provider.interface.js';
 import {
   CHAT_SESSIONS_REPOSITORY,
   CHAT_MESSAGES_REPOSITORY,
@@ -32,7 +32,7 @@ import { WorkoutDialogModule } from '../workout-dialog/workout-dialog.module.js'
     },
     {
       provide: LLM_PROVIDER,
-      useClass: MockLLMProvider,
+      useClass: RouterAILLMProvider,
     },
   ],
 })

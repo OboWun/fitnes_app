@@ -110,6 +110,8 @@ export class WorkoutMilpController {
         exerciseSlug: e.exerciseSlug,
         sets: e.sets,
         order: e.order,
+        restBetweenSets: e.restBetweenSetsSec,
+        restAfterExercise: e.restAfterExerciseSec,
       })),
       metadata: {
         sessionDurationMin: dto.sessionDurationMin ?? undefined,

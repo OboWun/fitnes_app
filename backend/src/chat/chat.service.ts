@@ -13,6 +13,7 @@ import {
   type IEquipmentsRepository,
   type IEquipmentPresetsRepository,
 } from '../common/repositories/index.js';
+import type { User as UserType } from '../entities/index.js';
 import type { ChatSession, ChatMessage } from '../entities/index.js';
 import { LLM_PROVIDER, type ILLMProvider } from './llm/llm-provider.interface.js';
 import { WorkoutDialogService } from '../workout-dialog/workout-dialog.service.js';
@@ -209,7 +210,7 @@ export class ChatService {
           sessionId,
           role: 'assistant',
           content:
-            'Отлично! Я собрал все параметры. Теперь вы можете создать тренировку на основе этих данных. Хотите, я создам программу прямо сейчас?',
+            'Супер, все параметры собраны! 💪 Могу прямо сейчас составить тебе программу на основе этих данных. Создаём?',
           metadata: {
             type: 'dialog_complete',
             planType,
@@ -233,15 +234,15 @@ export class ChatService {
     } else {
       const history = await this.messagesRepo.findBySessionId(sessionId);
       const user = await this.usersRepo.findById(userId);
-      const userContext = user
-        ? `Пользователь: ${user.name ?? 'аноним'}, цель: ${user.metadata?.goal ?? 'не указана'}, уровень: ${user.metadata?.experienceLevel ?? 'не указан'}`
-        : undefined;
+      const userContext = user ? this.buildUserContext(user) : undefined;
 
       const response = await this.llmProvider.generateResponse({
-        messages: history.map((m) => ({
-          role: m.role,
-          content: m.content,
-        })),
+        messages: history
+          .filter((m) => m.role !== 'system')
+          .map((m) => ({
+            role: m.role,
+            content: m.content,
+          })),
         userContext,
       });
 
@@ -259,5 +260,22 @@ export class ChatService {
       dialogCompleted,
       workoutResult,
     };
+  }
+
+  private buildUserContext(user: UserType): string {
+    const meta = user.metadata;
+    const lines: string[] = ['## Контекст пользователя'];
+
+    if (user.name) lines.push(`Имя: ${user.name}`);
+    if (user.gender) lines.push(`Пол: ${user.gender === 'male' ? 'мужской' : 'женский'}`);
+    if (user.age) lines.push(`Возраст: ${user.age}`);
+    if (user.weight) lines.push(`Вес: ${user.weight} кг`);
+    if (user.height) lines.push(`Рост: ${user.height} см`);
+    if (meta?.goal) lines.push(`Цель: ${meta.goal}`);
+    if (meta?.experienceLevel) lines.push(`Уровень подготовки: ${meta.experienceLevel}`);
+    if (meta?.injuryHistory?.length) lines.push(`Травмы: ${meta.injuryHistory.join(', ')}`);
+    if (user.contraindications?.length) lines.push(`Противопоказания: ${user.contraindications.join(', ')}`);
+
+    return lines.join('\n');
   }
 }

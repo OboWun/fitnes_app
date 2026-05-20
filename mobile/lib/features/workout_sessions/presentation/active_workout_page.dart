@@ -10,6 +10,7 @@ import '../domain/session_exercise.dart';
 import '../domain/workout_session.dart';
 import '../domain/workout_set.dart';
 import 'widgets/exercise_block.dart';
+import 'widgets/rest_bar.dart';
 import 'widgets/rest_timer_overlay.dart';
 import 'widgets/workout_progress_bar.dart';
 
@@ -266,8 +267,14 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
                       child: ListView.separated(
                         padding: const EdgeInsets.all(16),
                         itemCount: _session!.exercises.length,
-                        separatorBuilder: (_, __) =>
-                            const SizedBox(height: 12),
+                        separatorBuilder: (_, index) {
+                          final rest =
+                              _session!.exercises[index].restAfterExercise;
+                          if (rest != null) {
+                            return RestBar(durationSec: rest);
+                          }
+                          return const SizedBox(height: 12);
+                        },
                         itemBuilder: (context, index) {
                           final ex = _session!.exercises[index];
                           return ExerciseBlock(
@@ -275,6 +282,7 @@ class _ActiveWorkoutPageState extends ConsumerState<ActiveWorkoutPage> {
                                 _exerciseNames[ex.exerciseSlug] ??
                                     ex.exerciseSlug,
                             sets: _mergedSets(ex),
+                            restBetweenSets: ex.restBetweenSets,
                             onSetChanged: (updated) =>
                                 _onSetChanged(ex.exerciseSlug, updated),
                           );

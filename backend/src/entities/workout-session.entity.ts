@@ -38,4 +38,6 @@ export interface WorkoutSessionExercise {
 export interface WorkoutSessionExerciseMetadata {
   targetLoad?: number;
   setWeight?: number;
+  restBetweenSets?: number;
+  restAfterExercise?: number;
 }

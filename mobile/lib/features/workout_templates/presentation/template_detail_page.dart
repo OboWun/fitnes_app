@@ -184,9 +184,11 @@ class _TemplateDetailPageState extends ConsumerState<TemplateDetailPage> {
                         return _ExerciseTile(
                           name: info?.name ?? ex.exerciseSlug,
                           imageUrl: info?.imageUrl,
-                          subtitle:
-                              '${ex.sets} × ${ex.reps ?? '—'} повторений'
-                              '${ex.restBetweenSets != null ? ' · отдых ${ex.restBetweenSets}с' : ''}',
+                          setsRepsLabel:
+                              '${ex.sets} × ${ex.reps ?? '—'} повторений',
+                          restLabel: ex.restBetweenSets != null
+                              ? 'Отдых ${ex.restBetweenSets}с между подходами'
+                              : null,
                           onTap: () => context.push('/exercises/${ex.exerciseSlug}'),
                         );
                       }),
@@ -200,13 +202,15 @@ class _TemplateDetailPageState extends ConsumerState<TemplateDetailPage> {
 class _ExerciseTile extends StatelessWidget {
   final String name;
   final String? imageUrl;
-  final String subtitle;
+  final String setsRepsLabel;
+  final String? restLabel;
   final VoidCallback onTap;
 
   const _ExerciseTile({
     required this.name,
     this.imageUrl,
-    required this.subtitle,
+    required this.setsRepsLabel,
+    this.restLabel,
     required this.onTap,
   });
 
@@ -254,10 +258,26 @@ class _ExerciseTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
-                      subtitle,
+                      setsRepsLabel,
                       style: AppTypography.smallTextRegular
                           .copyWith(color: AppColors.gray1),
                     ),
+                    if (restLabel != null) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Icon(Icons.timer_outlined,
+                              size: 13, color: AppColors.gray2),
+                          const SizedBox(width: 4),
+                          Text(
+                            restLabel!,
+                            style: AppTypography.captionMedium.copyWith(
+                              color: AppColors.gray2,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
               ),

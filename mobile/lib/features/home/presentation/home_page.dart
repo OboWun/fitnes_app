@@ -7,6 +7,7 @@ import '../home_provider.dart';
 import 'smart_widgets/dictionary_grid_smart.dart';
 import 'smart_widgets/profile_header_smart.dart';
 import 'smart_widgets/program_action_grid_smart.dart';
+import 'smart_widgets/trainer_chat_card_smart.dart';
 import 'smart_widgets/view_all_link_smart.dart';
 import 'smart_widgets/week_calendar_smart.dart';
 import '../../workout_sessions/presentation/smart_widgets/next_workout_card_smart.dart';
@@ -50,6 +51,8 @@ class HomePage extends ConsumerWidget {
                 const NextWorkoutCardSmart(),
               const SizedBox(height: 12),
               const ViewAllLinkSmart(route: '/workouts'),
+              const SizedBox(height: 24),
+              const TrainerChatCardSmart(),
               const SizedBox(height: 24),
               const SectionHeader(title: 'Справочник'),
               const SizedBox(height: 16),

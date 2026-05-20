@@ -9,6 +9,8 @@ import '../../workout_templates/domain/workout_exercise.dart';
 import '../../workout_templates/domain/workout_template.dart';
 import '../../workout_templates/template_list_provider.dart';
 
+part '_widgets.dart';
+
 class CreateTemplatePage extends ConsumerStatefulWidget {
   final WorkoutTemplate? existing;
 
@@ -39,6 +41,8 @@ class _CreateTemplatePageState extends ConsumerState<CreateTemplatePage> {
               slug: e.exerciseSlug,
               name: e.exerciseSlug,
               sets: e.sets,
+              restBetweenSets: e.restBetweenSets,
+              restAfterExercise: e.restAfterExercise,
             )),
       );
       _resolveNames();
@@ -57,6 +61,8 @@ class _CreateTemplatePageState extends ConsumerState<CreateTemplatePage> {
                 slug: _exercises[i].slug,
                 name: detail.name,
                 sets: _exercises[i].sets,
+                restBetweenSets: _exercises[i].restBetweenSets,
+                restAfterExercise: _exercises[i].restAfterExercise,
               );
             });
           }
@@ -85,6 +91,8 @@ class _CreateTemplatePageState extends ConsumerState<CreateTemplatePage> {
                 exerciseSlug: e.value.slug,
                 sets: e.value.sets,
                 order: e.key + 1,
+                restBetweenSets: e.value.restBetweenSets,
+                restAfterExercise: e.value.restAfterExercise,
               ))
           .toList();
 
@@ -143,6 +151,17 @@ class _CreateTemplatePageState extends ConsumerState<CreateTemplatePage> {
       }
     });
     _resolveNames();
+  }
+
+  void _update(int i, {int? sets, int? restBetween, int? restAfter}) {
+    final e = _exercises[i];
+    setState(() => _exercises[i] = _ExerciseEntry(
+      slug: e.slug,
+      name: e.name,
+      sets: sets ?? e.sets,
+      restBetweenSets: restBetween ?? e.restBetweenSets,
+      restAfterExercise: restAfter ?? e.restAfterExercise,
+    ));
   }
 
   @override
@@ -206,166 +225,24 @@ class _CreateTemplatePageState extends ConsumerState<CreateTemplatePage> {
                 child: _ExerciseTile(
                   name: e.name,
                   sets: e.sets,
-                  onSetsChanged: (v) => setState(() {
-                    _exercises[i] = _ExerciseEntry(
-                      slug: e.slug,
-                      name: e.name,
-                      sets: v,
-                    );
-                  }),
+                  restBetweenSets: e.restBetweenSets,
+                  restAfterExercise: e.restAfterExercise,
+                  onSetsChanged: (v) => _update(i, sets: v),
+                  onRestBetweenSetsChanged: (v) =>
+                      _update(i, restBetween: v),
+                  onRestAfterExerciseChanged: (v) =>
+                      _update(i, restAfter: v),
                   onDelete: () =>
                       setState(() => _exercises.removeAt(i)),
                 ),
               );
             }),
             const SizedBox(height: 8),
-            InkWell(
-              onTap: _pickExercises,
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.gray3),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.add, color: AppColors.gray1, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Добавить упражнение',
-                      style: AppTypography.mediumTextMedium.copyWith(
-                        color: AppColors.gray1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            _AddExerciseButton(onTap: _pickExercises),
             const SizedBox(height: 24),
           ],
         ),
       ),
     );
   }
-}
-
-class _ExerciseTile extends StatelessWidget {
-  final String name;
-  final int sets;
-  final ValueChanged<int>? onSetsChanged;
-  final VoidCallback? onDelete;
-
-  const _ExerciseTile({
-    required this.name,
-    required this.sets,
-    this.onSetsChanged,
-    this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.borderColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.drag_handle, color: AppColors.gray2, size: 20),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: AppTypography.mediumTextSemiBold.copyWith(
-                    color: AppColors.blackColor,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 6),
-                Row(
-                  children: [
-                    Text(
-                      'Подходы:',
-                      style: AppTypography.smallTextRegular.copyWith(
-                        color: AppColors.gray1,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    _SmallButton(
-                      icon: Icons.remove,
-                      onTap: sets > 1
-                          ? () => onSetsChanged?.call(sets - 1)
-                          : null,
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Text(
-                        '$sets',
-                        style: AppTypography.smallTextSemiBold.copyWith(
-                          color: AppColors.blackColor,
-                        ),
-                      ),
-                    ),
-                    _SmallButton(
-                      icon: Icons.add,
-                      onTap: sets < 10
-                          ? () => onSetsChanged?.call(sets + 1)
-                          : null,
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          if (onDelete != null)
-            InkWell(
-              onTap: onDelete,
-              borderRadius: BorderRadius.circular(8),
-              child:
-                  Icon(Icons.close, color: AppColors.gray2, size: 20),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SmallButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  const _SmallButton({required this.icon, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        width: 24,
-        height: 24,
-        decoration: BoxDecoration(
-          border: Border.all(color: AppColors.gray3),
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Icon(icon, size: 14, color: AppColors.gray1),
-      ),
-    );
-  }
-}
-
-class _ExerciseEntry {
-  final String slug;
-  final String name;
-  final int sets;
-
-  const _ExerciseEntry({required this.slug, required this.name, this.sets = 3});
 }

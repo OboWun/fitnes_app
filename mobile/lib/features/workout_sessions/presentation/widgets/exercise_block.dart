@@ -2,23 +2,27 @@ import 'package:flutter/material.dart';
 
 import '../../../../design_system/design_system.dart';
 import '../../domain/workout_set.dart';
+import 'rest_bar.dart';
 import 'set_row.dart';
 
 class ExerciseBlock extends StatelessWidget {
   final String exerciseName;
   final List<WorkoutSet> sets;
+  final int? restBetweenSets;
   final ValueChanged<WorkoutSet>? onSetChanged;
 
   const ExerciseBlock({
     super.key,
     required this.exerciseName,
     required this.sets,
+    this.restBetweenSets,
     this.onSetChanged,
   });
 
   const ExerciseBlock.loading({super.key})
       : exerciseName = '',
         sets = const [],
+        restBetweenSets = null,
         onSetChanged = null;
 
   @override
@@ -27,6 +31,7 @@ class ExerciseBlock extends StatelessWidget {
     return _ExerciseBlockData(
       exerciseName: exerciseName,
       sets: sets,
+      restBetweenSets: restBetweenSets,
       onSetChanged: onSetChanged,
     );
   }
@@ -35,11 +40,13 @@ class ExerciseBlock extends StatelessWidget {
 class _ExerciseBlockData extends StatelessWidget {
   final String exerciseName;
   final List<WorkoutSet> sets;
+  final int? restBetweenSets;
   final ValueChanged<WorkoutSet>? onSetChanged;
 
   const _ExerciseBlockData({
     required this.exerciseName,
     required this.sets,
+    this.restBetweenSets,
     this.onSetChanged,
   });
 
@@ -91,16 +98,23 @@ class _ExerciseBlockData extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 12),
-          Column(
-            spacing: 8,
-            children: [
-              for (final s in sets)
-                SetRow(value: s, onChanged: onSetChanged),
-            ],
-          ),
+          ..._buildSetsWithRest(),
         ],
       ),
     );
+  }
+
+  List<Widget> _buildSetsWithRest() {
+    final children = <Widget>[];
+    for (int i = 0; i < sets.length; i++) {
+      children.add(SetRow(value: sets[i], onChanged: onSetChanged));
+      if (restBetweenSets != null && i < sets.length - 1) {
+        children.add(RestBar(durationSec: restBetweenSets!));
+      } else if (i < sets.length - 1) {
+        children.add(const SizedBox(height: 8));
+      }
+    }
+    return children;
   }
 }
 

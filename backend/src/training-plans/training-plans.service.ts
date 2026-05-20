@@ -127,6 +127,15 @@ export class TrainingPlansService {
     if (plan.isActive) {
       throw new BadRequestException('Cannot delete an active plan. Archive it first.');
     }
+
+    if (plan.schedule?.length) {
+      for (const item of plan.schedule) {
+        try {
+          await this.templatesRepo.delete(item.workoutTemplateId);
+        } catch {}
+      }
+    }
+
     await this.plansRepo.delete(id);
   }
 

@@ -7,6 +7,7 @@ export 'presentation/widgets/day_card.dart';
 export 'presentation/widgets/dictionary_grid.dart';
 export 'presentation/widgets/profile_header.dart';
 export 'presentation/widgets/section_header.dart';
+export 'presentation/widgets/trainer_chat_card.dart';
 export 'presentation/widgets/view_all_link.dart';
 export 'presentation/widgets/week_calendar.dart';
 export 'presentation/widgets/workout_reminder.dart';

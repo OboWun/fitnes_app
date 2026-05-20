@@ -268,6 +268,8 @@ export interface WeeklyProcessOutput {
       sets: number;
       repsPerSet: number;
       order: number;
+      restBetweenSetsSec?: number;
+      restAfterExerciseSec?: number;
     }[];
     loadByMuscle: Record<string, number>;
     totalTimeSec: number;
@@ -443,6 +445,8 @@ export class WeeklyProcessMilpService {
         sets: e.sets,
         reps: e.repsPerSet,
         order: e.order,
+        restBetweenSets: e.restBetweenSetsSec,
+        restAfterExercise: e.restAfterExerciseSec,
       }));
 
       const template = await this.templatesRepository.create({
